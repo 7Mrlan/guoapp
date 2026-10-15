@@ -765,7 +765,10 @@ func parseHuangguoAIEpisodes(rawHTML, pageURL, sourceID string) []providerEpisod
 		fullURL := resolveProviderURL(pageURL, href)
 		linkHTML := rawHTML[m[0]:m[1]]
 		title := firstNonEmpty(extractAttr(linkHTML, "title", "aria-label"), cleanText(linkHTML))
-		key := aiEpisodeKey(href, sourceID)
+		key, own := aiEpisodeKey(href, sourceID)
+		if !own {
+			continue
+		}
 		if key == "" {
 			key = fmt.Sprintf("auto-%d", len(episodes)+1)
 		}
@@ -965,7 +968,7 @@ func nextUnusedEpisodeIndex(preferred int, used map[int]bool) int {
 	}
 }
 
-func aiEpisodeKey(href, sourceID string) string {
+func aiEpisodeKey(href, sourceID string) (string, bool) {
 	u, err := url.Parse(html.UnescapeString(href))
 	path := href
 	if err == nil {
@@ -973,13 +976,13 @@ func aiEpisodeKey(href, sourceID string) string {
 	}
 	path = strings.Trim(strings.TrimPrefix(path, "/video/"), "/")
 	parts := strings.Split(path, "/")
-	if len(parts) > 1 && parts[0] == sourceID {
-		return cleanID(parts[len(parts)-1])
+	if parts[0] != sourceID {
+		return "", false
 	}
-	if len(parts) == 1 && parts[0] == sourceID {
-		return ""
+	if len(parts) > 1 {
+		return cleanID(parts[len(parts)-1]), true
 	}
-	return cleanID(strings.Join(parts, "-"))
+	return "", true
 }
 
 func huangguoVideoSourceID(href string) (path, sourceID string) {
