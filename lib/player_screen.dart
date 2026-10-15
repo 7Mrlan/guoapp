@@ -1063,6 +1063,8 @@ class _PlayerScreenState extends State<PlayerScreen>
             await platform.setProperty('vd-lavc-fast', 'yes');
             await platform.setProperty('video-sync', 'audio');
             await platform.setProperty('framedrop', 'vo');
+          } else if (Platform.isWindows) {
+            await platform.setProperty('hwdec', 'd3d11va-copy');
           }
           await platform.setProperty(
             'demuxer-lavf-o',
