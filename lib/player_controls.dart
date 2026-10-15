@@ -264,21 +264,16 @@ class _PlayerControlsState extends State<PlayerControls> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      const IgnorePointer(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Color(0xAA000000),
-                                Colors.transparent,
-                                Color(0xE6000000),
-                              ],
-                              stops: [0, .45, 1],
-                            ),
-                          ),
+                      if (widget.fullscreen || widget.swipeEnabled)
+                        _edgeShade(
+                          alignment: Alignment.topCenter,
+                          color: const Color(0xAA000000),
+                          height: _topChromeInset() + 56,
                         ),
+                      _edgeShade(
+                        alignment: Alignment.bottomCenter,
+                        color: const Color(0xE6000000),
+                        height: _bottomChromeInset() + 96,
                       ),
                       Padding(
                         padding: EdgeInsets.fromLTRB(
@@ -291,11 +286,6 @@ class _PlayerControlsState extends State<PlayerControls> {
                           children: [
                             if (widget.fullscreen || widget.swipeEnabled)
                               _topBar(),
-                            if (!state.buffering &&
-                                widget.enabled &&
-                                constraints.maxHeight >=
-                                    (widget.swipeEnabled ? 168 : 220))
-                              _centerPlayback(state.playing, showSkip: true),
                             _sideDanmakuControl(),
                             _bottomControls(
                               constraints: constraints,
@@ -379,38 +369,57 @@ class _PlayerControlsState extends State<PlayerControls> {
     ),
   );
 
-  Widget _centerPlayback(bool playing, {required bool showSkip}) => Center(
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (showSkip) ...[
-          IconButton(
-            tooltip: '上一集',
-            onPressed: widget.onPrevious,
-            icon: const Icon(Icons.skip_previous_rounded),
+  Widget _edgeShade({
+    required Alignment alignment,
+    required Color color,
+    required double height,
+  }) => IgnorePointer(
+    child: Align(
+      alignment: alignment,
+      child: SizedBox(
+        width: double.infinity,
+        height: height,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: alignment,
+              end: -alignment,
+              colors: [color, Colors.transparent],
+            ),
           ),
-          const SizedBox(width: 12),
-        ],
-        IconButton.filledTonal(
-          tooltip: playing ? '暂停播放' : '开始播放',
-          iconSize: 38,
-          onPressed: () {
-            widget.onTogglePlayback();
-            _show();
-          },
-          icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
         ),
-        if (showSkip) ...[
-          const SizedBox(width: 12),
-          IconButton(
-            tooltip: '下一集',
-            onPressed: widget.onNext,
-            icon: const Icon(Icons.skip_next_rounded),
-          ),
-        ],
-      ],
+      ),
     ),
   );
+
+  Widget _playbackGroup() {
+    final playing = widget.player.state.playing;
+    return _toolGroup([
+      _toolIcon(
+        key: const ValueKey('player-toggle-playback'),
+        tooltip: playing ? '暂停播放' : '开始播放',
+        icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+        onPressed: widget.enabled
+            ? () {
+                widget.onTogglePlayback();
+                _show();
+              }
+            : null,
+      ),
+      _toolIcon(
+        key: const ValueKey('player-previous'),
+        tooltip: '上一集',
+        icon: Icons.skip_previous_rounded,
+        onPressed: widget.onPrevious,
+      ),
+      _toolIcon(
+        key: const ValueKey('player-next'),
+        tooltip: '下一集',
+        icon: Icons.skip_next_rounded,
+        onPressed: widget.onNext,
+      ),
+    ]);
+  }
 
   Widget _sideDanmakuControl() {
     if (!widget.showDanmaku) return const SizedBox.shrink();
@@ -696,23 +705,18 @@ class _PlayerControlsState extends State<PlayerControls> {
     );
   }
 
-  Widget _clusteredToolRow(List<Widget> tools) {
-    if (tools.isEmpty) return const SizedBox.shrink();
-    if (tools.length <= 5) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [_toolGroup(tools)],
-      );
-    }
-    final leftCount = tools.length ~/ 2;
-    return Row(
-      children: [
-        _toolGroup(tools.take(leftCount).toList()),
-        const Spacer(),
-        _toolGroup(tools.skip(leftCount).toList()),
-      ],
-    );
-  }
+  Widget _clusteredToolRow(List<Widget> tools) => Row(
+    children: [
+      _playbackGroup(),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: FittedBox(fit: BoxFit.scaleDown, child: _toolGroup(tools)),
+        ),
+      ),
+    ],
+  );
 
   Widget _danmakuTool() => _toolButton(
     key: const ValueKey('player-danmaku-toggle'),
