@@ -41,7 +41,17 @@ class CatalogBrowser {
   final _menus = <String, List<CatalogCategory>>{};
   final _library = <String, Map<String, Drama>>{};
   final _sessions = <String, _CatalogSession>{};
+  final _cachedReads = <String, Future<CatalogPage>>{};
   int _generation = 0;
+
+  Future<CatalogPage> cached(String source, {String category = ''}) {
+    final key = '$source|$category';
+    return _cachedReads[key] ??= repository
+        .cached(source, category: category)
+        .whenComplete(() {
+          _cachedReads.remove(key);
+        });
+  }
 
   Future<void> cancel() {
     _generation++;
@@ -102,8 +112,8 @@ class CatalogBrowser {
     final failures = <String>[];
     await _each(group.sources, (source) async {
       try {
-        final cached = await repository.cached(source.id);
-        _remember(source.id, cached.items);
+        final page = await cached(source.id);
+        _remember(source.id, page.items);
       } catch (_) {}
       if (cacheOnly) return;
       try {
@@ -224,10 +234,7 @@ class CatalogBrowser {
     if ((useCache || cacheOnly) && !force && !more && query.isEmpty) {
       await _each(sourceOrder, (source) async {
         try {
-          final cached = await repository.cached(
-            source,
-            category: requests[source]!,
-          );
+          final cached = await this.cached(source, category: requests[source]!);
           if (generation != session.generation || cached.items.isEmpty) return;
           final entry = session.entries[source]!;
           entry.items = cached.items;

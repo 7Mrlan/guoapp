@@ -59,6 +59,32 @@ void main() {
     },
   );
 
+  test('a task finished before watching starts is not redelivered', () async {
+    final store = await create();
+    final repository = LibraryFeatureRepository();
+    final changed = <String>[];
+    final updater = LibraryUpdater(
+      repository,
+      store,
+      onCatalogChanged: changed.add,
+    );
+    addTearDown(updater.dispose);
+    repository.statuses['hongguo'] = repository.finished('hongguo');
+    await updater.refresh();
+    expect(changed, isEmpty);
+    repository.statuses['hongguo'] = repository.running('hongguo');
+    await updater.refresh();
+    repository.statuses['hongguo'] = SourceStatus.fromJson({
+      'source': 'hongguo',
+      'operation': 'update',
+      'running': false,
+      'startedAt': '2026-09-21T09:00:00Z',
+      'finishedAt': '2026-09-21T09:01:00Z',
+    });
+    await updater.refresh();
+    expect(changed, ['hongguo']);
+  });
+
   test('stopping during submission prevents queued source starts', () async {
     final store = await create();
     final repository = LibraryFeatureRepository()

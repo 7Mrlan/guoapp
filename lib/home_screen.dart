@@ -41,6 +41,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const _recommendationCategory = 'app:recommendations';
+  static const _revealBatch = 60;
   final _search = TextEditingController();
   final _scroll = ScrollController();
   Timer? _debounce;
@@ -69,6 +70,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showRecommendations = false;
   String _sourceSignature = '';
   bool _catalogLoadScheduled = false;
+  int _revealed = _revealBatch;
+  int? _revealKey;
+  bool _hiddenItems = false;
 
   List<SourceGroup> get _sourceGroups {
     final groups = SourceGroup.fromSources(widget.store.sources);
@@ -205,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
         for (final source in sources) {
           if (!widget.store.allowsSource(source)) continue;
           try {
-            final cached = await widget.repository.cached(source);
+            final cached = await _browser.cached(source);
             for (final drama in cached.items) {
               if (widget.store.allowsSource(drama.source)) {
                 updates[drama.id] = drama;
@@ -236,13 +240,13 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         if (!mounted || epoch != widget.store.profileEpoch) return;
         if (_group.sources.any((source) => sources.contains(source.id))) {
-          await _loadCategories(cacheOnly: true);
-          if (mounted &&
-              !_loading &&
-              !_loadingMore &&
-              (!_onlineSearch || _search.text.trim().isEmpty)) {
-            await _load(cacheOnly: true);
-          }
+          await Future.wait([
+            _loadCategories(cacheOnly: true),
+            if (!_loading &&
+                !_loadingMore &&
+                (!_onlineSearch || _search.text.trim().isEmpty))
+              _load(cacheOnly: true),
+          ]);
         }
       }
     } finally {
@@ -458,12 +462,12 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  bool get _canLoadMore => _hasMore && !_loading && !_loadingMore;
+
   void _onCatalogScroll() {
     if (!mounted ||
         _showRecommendations ||
-        !_hasMore ||
-        _loading ||
-        _loadingMore ||
+        !(_hiddenItems || _canLoadMore) ||
         !_scroll.hasClients) {
       return;
     }
@@ -473,16 +477,36 @@ class _HomeScreenState extends State<HomeScreen> {
     _catalogLoadScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _catalogLoadScheduled = false;
-      if (!mounted ||
-          _showRecommendations ||
-          !_hasMore ||
-          _loading ||
-          _loadingMore ||
-          !_scroll.hasClients) {
-        return;
-      }
-      unawaited(_load(more: true));
+      if (!mounted || _showRecommendations || !_scroll.hasClients) return;
+      if (_hiddenItems || _canLoadMore) _showMore();
     });
+  }
+
+  void _showMore() {
+    if (_hiddenItems) {
+      setState(() => _revealed += _revealBatch);
+    } else {
+      unawaited(_load(more: true));
+    }
+  }
+
+  List<Drama> _reveal(List<Drama> items) {
+    final view = widget.store.catalogView;
+    final key = Object.hash(
+      _group.id,
+      _category,
+      _submittedQuery,
+      _search.text.trim(),
+      view.sort,
+      view.release,
+      _hideVip,
+    );
+    if (key != _revealKey) {
+      _revealKey = key;
+      _revealed = _revealBatch;
+    }
+    _hiddenItems = items.length > _revealed;
+    return _hiddenItems ? items.sublist(0, _revealed) : items;
   }
 
   void _metadataChanged() {
@@ -522,16 +546,22 @@ class _HomeScreenState extends State<HomeScreen> {
         if (query != _submittedQuery) _items = [];
       }
     });
+    CatalogPage? refreshed;
     void accept(CatalogPage result, {bool cached = false}) {
       if (!mounted || generation != _generation) return;
       setState(() {
         _items = result.items;
+        if (more && result.items.length > _revealed) {
+          _revealed = result.items.length;
+        }
         _hasMore = result.hasMore;
         _submittedQuery = query;
         _loading = cached && !result.fresh;
         _loadingMore = false;
         _error = result.warning.isEmpty ? null : result.warning;
       });
+      if (identical(result, refreshed)) return;
+      refreshed = result;
       unawaited(
         saveUserChange(context, () => widget.store.refreshDramas(result.items)),
       );
@@ -1180,7 +1210,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _catalog({required bool selectionInBody}) {
-    final items = _visible;
+    final items = _reveal(_visible);
     final television = AppLayout.isTelevision(context);
     return Column(
       children: [
@@ -1335,11 +1365,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: Center(
                                 child: _loadingMore
                                     ? const CircularProgressIndicator()
-                                    : _hasMore
+                                    : _hiddenItems || _hasMore
                                     ? RemoteButton(
                                         label: '加载更多',
                                         icon: Icons.expand_more,
-                                        onPressed: () => _load(more: true),
+                                        onPressed: _showMore,
                                       )
                                     : const Text('已经看到这里的全部剧集'),
                               ),
@@ -1379,9 +1409,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: Center(
                                     child: _loadingMore
                                         ? const CircularProgressIndicator()
-                                        : _hasMore
+                                        : _hiddenItems || _hasMore
                                         ? OutlinedButton.icon(
-                                            onPressed: () => _load(more: true),
+                                            onPressed: _showMore,
                                             icon: const Icon(
                                               Icons.expand_more_rounded,
                                             ),

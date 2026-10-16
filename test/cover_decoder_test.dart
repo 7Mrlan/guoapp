@@ -36,15 +36,15 @@ class CoverExecutor implements MediaExecutor {
 
 void main() {
   test(
-    'HEIC conversion serializes work, shares duplicates and reuses JPEG cache',
+    'HEIC conversion caps parallel work, shares duplicates and reuses JPEG cache',
     () async {
       final directory = await Directory.systemTemp.createTemp(
         'synthetic-cover-',
       );
       addTearDown(() => directory.delete(recursive: true));
       final originals = [
-        File('${directory.path}/first.img'),
-        File('${directory.path}/second.img'),
+        for (var index = 0; index < 5; index++)
+          File('${directory.path}/original-$index.img'),
       ];
       for (final file in originals) {
         await file.writeAsBytes([1, 2, 3]);
@@ -69,19 +69,19 @@ void main() {
 
       final outputs = await Future.wait([
         decoder.convert(originals[0].path, prepare),
-        decoder.convert(originals[0].path, prepare),
-        decoder.convert(originals[1].path, prepare),
+        for (final original in originals)
+          decoder.convert(original.path, prepare),
       ]);
-      expect(peak, 1);
-      expect(conversions, 2);
-      expect(preparations, 2);
+      expect(peak, inInclusiveRange(1, 3));
+      expect(conversions, 5);
+      expect(preparations, 5);
       expect(outputs[0], outputs[1]);
       expect(
         await File(outputs[0]).readAsBytes(),
         await File('test/fixtures/cover.jpg').readAsBytes(),
       );
       await decoder.convert(originals[0].path, prepare);
-      expect(conversions, 2);
+      expect(conversions, 5);
       expect(
         directory.listSync().whereType<File>().where(
           (file) => file.path.endsWith('.hevc'),

@@ -180,6 +180,7 @@ abstract class AppRepository {
   });
   Future<CatalogPage> cached(String source, {String category = ''});
   Future<String> cover(Drama drama, {bool force = false});
+  bool coverCached(Drama drama) => false;
   Future<DramaDetail> detail(Drama drama);
   Future<PlaybackPlan> resolve(Drama drama, Episode episode, {int quality = 0});
   Future<PlaybackPlan> fallback(PlaybackPlan current);
@@ -189,6 +190,7 @@ abstract class AppRepository {
 
 class NativeRepository extends AppRepository {
   static final _coverDecoder = CoverDecoder();
+  static final _coverPaths = <String, String>{};
   NativeRepository({this.background = false});
   final bool background;
   LocalStore? access;
@@ -571,18 +573,20 @@ class NativeRepository extends AppRepository {
         input['force'] = true;
       }
       final body = jsonEncode(input);
-      final encoded = await Isolate.run(() => _nativeRequest(body)).timeout(
-        Duration(
-          seconds: action == 'moveDownloads'
-              ? 620
-              : action == 'danmaku'
-              ? 15
-              : action == 'preload'
-              ? 20
-              : 70,
-        ),
-      );
-      final response = jsonDecode(encoded) as Map<String, dynamic>;
+      final response =
+          await Isolate.run(
+            () => jsonDecode(_nativeRequest(body)) as Map<String, dynamic>,
+          ).timeout(
+            Duration(
+              seconds: action == 'moveDownloads'
+                  ? 620
+                  : action == 'danmaku'
+                  ? 15
+                  : action == 'preload'
+                  ? 20
+                  : 70,
+            ),
+          );
       if (response['ok'] != true) {
         throw AppFailure(
           response['error'] as String? ?? '读取失败，请重试',
@@ -693,7 +697,18 @@ class NativeRepository extends AppRepository {
         }),
       );
   @override
+  bool coverCached(Drama drama) =>
+      _coverPaths.containsKey('${drama.id}\u0000${drama.cover}');
+
+  @override
   Future<String> cover(Drama drama, {bool force = false}) async {
+    final key = '${drama.id}\u0000${drama.cover}';
+    final known = force ? null : _coverPaths[key];
+    if (known != null) {
+      _authorize(drama.source);
+      if (await File(known).exists()) return known;
+      _coverPaths.remove(key);
+    }
     final epoch = access?.profileEpoch;
     final result = await _call({
       'action': 'cover',
@@ -702,7 +717,7 @@ class NativeRepository extends AppRepository {
     });
     final file = result['path'] as String? ?? '';
     if (file.isEmpty) throw AppFailure('海报暂不可用');
-    if (result['heic'] != true) return file;
+    if (result['heic'] != true) return _rememberCover(key, file);
     final converted = await _coverDecoder.convert(
       file,
       () => _call({'action': 'prepareCover', 'drama': drama.toJson()}),
@@ -710,7 +725,14 @@ class NativeRepository extends AppRepository {
     );
     _authorize(drama.source);
     if (epoch != access?.profileEpoch) throw AppFailure('用户已切换，请重新操作');
-    return converted;
+    return _rememberCover(key, converted);
+  }
+
+  String _rememberCover(String key, String path) {
+    _coverPaths.remove(key);
+    _coverPaths[key] = path;
+    if (_coverPaths.length > 2000) _coverPaths.remove(_coverPaths.keys.first);
+    return path;
   }
 
   @override

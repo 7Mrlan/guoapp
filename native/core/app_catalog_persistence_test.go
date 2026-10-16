@@ -461,3 +461,36 @@ func TestNativeSourceRecordSaveFailureAndRetryDuringBackoff(t *testing.T) {
 		t.Fatal("oversized records replaced the previous saved report")
 	}
 }
+
+func TestNativeHongguoInteractiveFirstLoadStopsEarly(t *testing.T) {
+	var calls int
+	transport := sourceFixtureTransport(func(request *http.Request) (*http.Response, error) {
+		payload := nativeHongguoRequestForTest(t, request)
+		calls++
+		base := map[string]int{"default": 1000, "comic_series": 2000, "ai_series": 3000}[payload.Scene]
+		position := payload.Offset / 18
+		return nativeHongguoResponse(request, payload.Offset+18, true, "fixture-"+payload.Scene,
+			strconv.Itoa(base+position*2+1), strconv.Itoa(base+position*2+2)), nil
+	})
+	engine := sourceFixtureEngine(t, transport)
+	engine.downloader.cfg.MaxPagesPerSort = 5
+	for _, check := range []struct {
+		ctx   context.Context
+		input nativeInput
+		calls int
+	}{
+		{context.Background(), nativeInput{Source: sourceHongguo, Page: 1}, 3},
+		{context.Background(), nativeInput{Source: sourceHongguo, Category: "short_play", Page: 1}, 3},
+		{context.Background(), nativeInput{Source: sourceHongguo, Category: "short_play", Page: 2}, 3},
+		{context.WithValue(context.Background(), backgroundCatalogKey{}, true), nativeInput{Source: sourceHongguo, Category: "ai_series", Page: 1}, 5},
+	} {
+		calls = 0
+		result, err := engine.nativeCatalog(check.ctx, check.input)
+		if err != nil || result.Warning != "" || !result.HasMore {
+			t.Fatal("catalog page failed", check.input, err, result.Warning)
+		}
+		if calls != check.calls {
+			t.Fatal("unexpected page requests", check.input, calls)
+		}
+	}
+}

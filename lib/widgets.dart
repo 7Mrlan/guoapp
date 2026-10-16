@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -196,8 +197,38 @@ class CachedCoverImage extends StatefulWidget {
   State<CachedCoverImage> createState() => _CachedCoverImageState();
 }
 
+class _CoverRequests {
+  static const _limit = 6;
+  static final _waiting = <VoidCallback>[];
+  static var _running = 0;
+
+  static void add(VoidCallback start) {
+    _waiting.add(start);
+    _drain();
+  }
+
+  static void remove(VoidCallback start) => _waiting.remove(start);
+
+  static Future<String> run(Future<String> Function() request) async {
+    try {
+      return await request();
+    } finally {
+      _running--;
+      _drain();
+    }
+  }
+
+  static void _drain() {
+    while (_running < _limit && _waiting.isNotEmpty) {
+      _running++;
+      _waiting.removeLast()();
+    }
+  }
+}
+
 class _CachedCoverImageState extends State<CachedCoverImage> {
-  late Future<String> _file;
+  Future<String>? _file;
+  Timer? _delay;
   int _coverRevision = 0;
   bool _coverFailed = false;
   bool _retryOnFailure = false;
@@ -211,7 +242,34 @@ class _CachedCoverImageState extends State<CachedCoverImage> {
       widget.drama.id,
     );
     widget.repository.catalogUpdates.addListener(_metadataChanged);
-    _file = widget.repository.cover(widget.drama);
+    _request();
+  }
+
+  void _request() {
+    _cancelRequest();
+    if (widget.repository.coverCached(widget.drama)) {
+      _file = widget.repository.cover(widget.drama);
+      return;
+    }
+    _file = null;
+    _delay = Timer(
+      const Duration(milliseconds: 150),
+      () => _CoverRequests.add(_start),
+    );
+  }
+
+  void _start() {
+    final drama = widget.drama;
+    final file = _CoverRequests.run(() => widget.repository.cover(drama));
+    setState(() {
+      _file = file;
+    });
+  }
+
+  void _cancelRequest() {
+    _delay?.cancel();
+    _delay = null;
+    _CoverRequests.remove(_start);
   }
 
   @override
@@ -230,7 +288,7 @@ class _CachedCoverImageState extends State<CachedCoverImage> {
       _coverRevision = widget.repository.catalogUpdates.coverRevision(
         widget.drama.id,
       );
-      _file = widget.repository.cover(widget.drama);
+      _request();
     }
   }
 
@@ -258,6 +316,7 @@ class _CachedCoverImageState extends State<CachedCoverImage> {
 
   @override
   void dispose() {
+    _cancelRequest();
     widget.repository.catalogUpdates.removeListener(_metadataChanged);
     super.dispose();
   }
@@ -271,6 +330,7 @@ class _CachedCoverImageState extends State<CachedCoverImage> {
       ).evict();
     }
     if (mounted) {
+      _cancelRequest();
       setState(() {
         _coverFailed = _retryOnFailure = false;
         _failedPath = null;
@@ -299,24 +359,26 @@ class _CachedCoverImageState extends State<CachedCoverImage> {
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<String>(
-    future: _file,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState != ConnectionState.done) {
-        return widget.placeholder;
-      }
-      if (snapshot.hasError || !snapshot.hasData) {
-        return _failed(null);
-      }
-      return Image.file(
-        File(snapshot.data!),
-        fit: BoxFit.cover,
-        cacheWidth: 440,
-        excludeFromSemantics: true,
-        errorBuilder: (_, error, stack) => _failed(snapshot.data),
-      );
-    },
-  );
+  Widget build(BuildContext context) => _file == null
+      ? widget.placeholder
+      : FutureBuilder<String>(
+          future: _file,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return widget.placeholder;
+            }
+            if (snapshot.hasError || !snapshot.hasData) {
+              return _failed(null);
+            }
+            return Image.file(
+              File(snapshot.data!),
+              fit: BoxFit.cover,
+              cacheWidth: 440,
+              excludeFromSemantics: true,
+              errorBuilder: (_, error, stack) => _failed(snapshot.data),
+            );
+          },
+        );
 }
 
 class DramaTile extends StatelessWidget {

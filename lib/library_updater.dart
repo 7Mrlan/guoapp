@@ -52,6 +52,7 @@ class LibraryUpdater extends ChangeNotifier {
 
   void _accept(SourceStatus status, {bool submitted = false}) {
     if (!_valid || !store.allowsSource(status.source)) return;
+    final seen = _statuses.containsKey(status.source);
     _statuses[status.source] = status;
     _errors.remove(status.source);
     final revision =
@@ -68,7 +69,7 @@ class LibraryUpdater extends ChangeNotifier {
         }.contains(status.operation) &&
         _delivered[status.source] != revision) {
       _delivered[status.source] = revision;
-      onCatalogChanged?.call(status.source);
+      if (seen || submitted) onCatalogChanged?.call(status.source);
     }
   }
 
