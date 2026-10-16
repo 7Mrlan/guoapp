@@ -194,9 +194,6 @@ func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, pat
 			if comment {
 				signHongguoCommentRequest(prepared, commentNonce, now)
 			} else {
-				// Player endpoints now require Argus551 + Ladon on top of
-				// X-Gorgon; without them /novel/player/video_model/v1/ and
-				// /novel/player/video_detail/v1/ return empty bodies or 110001.
 				signHongguoPlayerRequest(prepared, body, now, installID)
 			}
 		})

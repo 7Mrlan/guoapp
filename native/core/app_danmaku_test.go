@@ -85,8 +85,6 @@ func TestHongguoDanmakuCacheAndConcurrentRequests(t *testing.T) {
 	d := rankingTestDownloader(t, func(request *http.Request) (*http.Response, error) {
 		count := calls.Add(1)
 		if request.URL.Path == "/novel/player/video_detail/v1/" {
-			// Player endpoints now require Argus551 + Ladon; comment-specific
-			// headers must still not leak onto them.
 			if request.Header.Get("X-Argus") == "" || request.Header.Get("X-Ladon") == "" {
 				t.Error("player request missing Argus551/Ladon signature")
 			}

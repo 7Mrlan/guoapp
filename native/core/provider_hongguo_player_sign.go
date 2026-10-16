@@ -8,15 +8,13 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"math/bits"
 	"net/http"
 	"strconv"
 	"time"
 )
 
-// hongguoPlayerNonce is the 11-byte random nonce used by the player (novelread)
-// Argus/Ladon signing. It mirrors the shape of the comment nonce but is scoped
-// to the player endpoints so comment signatures never leak into them.
 type hongguoPlayerNonce [11]byte
 
 func newHongguoPlayerNonce() (hongguoPlayerNonce, error) {
@@ -25,20 +23,15 @@ func newHongguoPlayerNonce() (hongguoPlayerNonce, error) {
 	return nonce, err
 }
 
-// signHongguoPlayerRequest signs a regular (non-comment) 红果 App request with
-// X-Gorgon / X-Khronos / X-SS-Req-Ticket plus the Argus551 + Ladon headers the
-// player endpoints (/novel/player/video_model/v1/, /novel/player/video_detail/v1/)
-// now require. The comment path keeps its own signer untouched.
 func signHongguoPlayerRequest(request *http.Request, body []byte, now time.Time, installID string) {
 	stamp := uint32(now.Unix())
-	// X-Gorgon (keep the existing gorgon body, the server still validates it).
 	queryHash := md5.Sum([]byte(request.URL.RawQuery))
 	var payload [20]byte
 	copy(payload[:4], queryHash[:4])
 	if body != nil {
 		bodyHash := md5.Sum(body)
 		copy(payload[4:8], bodyHash[:4])
-		request.Header.Set("X-SS-STUB", hex.EncodeToString(bodyHash[:]))
+		request.Header.Set("X-SS-STUB", fmt.Sprintf("%X", bodyHash))
 	}
 	copy(payload[12:16], []byte{0, 6, 11, 28})
 	binary.BigEndian.PutUint32(payload[16:], stamp)
@@ -55,7 +48,6 @@ func signHongguoPlayerRequest(request *http.Request, body []byte, now time.Time,
 	request.Header.Set("X-Gorgon", hex.EncodeToString(signature))
 	request.Header.Set("X-SS-Req-Ticket", strconv.FormatInt(now.UnixMilli(), 10))
 
-	// Argus551 + Ladon for the player endpoints.
 	nonce, err := newHongguoPlayerNonce()
 	if err != nil {
 		return
@@ -64,11 +56,6 @@ func signHongguoPlayerRequest(request *http.Request, body []byte, now time.Time,
 	request.Header.Set("X-Ladon", hongguoPlayerLadon(request.URL.Query().Get("aid"), stamp, nonce[2:6]))
 }
 
-// hongguoPlayerArgus builds the X-Argus header for the player (aid=8662,
-// novelread 7.3.5.32). The wire format reuses the same protobuf + SM3 + Feistel
-// construction as the comment argus, but with player-scoped identity fields so
-// the server accepts it on /novel/player/* paths. "Argus551" refers to the SDK
-// version carried in field 1.
 func hongguoPlayerArgus(query string, body []byte, timestamp uint32, installID string, nonce hongguoPlayerNonce) string {
 	key, _ := hex.DecodeString("ac1adaae95a7af94a5114ab3b3a97dd80050aa0a39314c40528caec95256c28c")
 	var message []byte
@@ -81,13 +68,12 @@ func hongguoPlayerArgus(query string, body []byte, timestamp uint32, installID s
 		message = binary.AppendUvarint(message, uint64(len(value)))
 		message = append(message, value...)
 	}
-	// Argus551 SDK version (field 1).
 	varint(1, 0x20200551*2)
 	varint(2, 2)
 	varint(3, uint64(binary.LittleEndian.Uint32(nonce[6:10])))
-	bytesField(4, []byte("8662")) // aid for novelread
+	bytesField(4, []byte("8662"))
 	bytesField(6, []byte(installID))
-	bytesField(7, []byte("7.3.5.32")) // version_name for the current build
+	bytesField(7, []byte("7.3.5.32"))
 	bytesField(8, []byte("v04.07.01-ml-android"))
 	varint(9, 135135744)
 	bytesField(10, make([]byte, 8))
@@ -140,8 +126,6 @@ func hongguoPlayerArgus(query string, body []byte, timestamp uint32, installID s
 	return base64.StdEncoding.EncodeToString(append([]byte{0x3c, 0xcc}, container...))
 }
 
-// hongguoPlayerLadon reuses the Ladon block cipher with the player's aid. The
-// timestamp-derived payload matches what the server expects for aid=8662.
 func hongguoPlayerLadon(aid string, timestamp uint32, prefix []byte) string {
 	hash := md5.Sum(append(append([]byte(nil), prefix...), aid...))
 	digest := []byte(hex.EncodeToString(hash[:]))
