@@ -537,6 +537,7 @@ class TelevisionPlaybackSetting {
     this.danmaku,
     this.preload,
     this.enhancement,
+    this.decoder,
   });
   final double? speed;
   final int? quality;
@@ -544,6 +545,7 @@ class TelevisionPlaybackSetting {
   final bool? danmaku;
   final bool? preload;
   final VideoEnhancementPreferences? enhancement;
+  final TelevisionDecoder? decoder;
 }
 
 class TelevisionSettingsDialog extends StatelessWidget {
@@ -563,6 +565,7 @@ class TelevisionSettingsDialog extends StatelessWidget {
     this.preloadStatus = '',
     this.enhancement,
     this.onCompareEnhancement,
+    this.decoder,
   });
   final double speed;
   final int quality;
@@ -578,6 +581,7 @@ class TelevisionSettingsDialog extends StatelessWidget {
   final String preloadStatus;
   final VideoEnhancementController? enhancement;
   final VoidCallback? onCompareEnhancement;
+  final TelevisionDecoder? decoder;
 
   @override
   Widget build(BuildContext context) => AlertDialog(
@@ -631,6 +635,33 @@ class TelevisionSettingsDialog extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
+            if (decoder != null) ...[
+              const Text('解码方式', style: TextStyle(fontSize: 18)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final (value, label) in [
+                    (TelevisionDecoder.optimized, '硬解（默认）'),
+                    (TelevisionDecoder.hardware, '硬解（兼容）'),
+                    (TelevisionDecoder.software, '软解（兼容）'),
+                  ])
+                    RemoteButton(
+                      key: ValueKey('tv-decoder-${value.name}'),
+                      label: label,
+                      selected: value == decoder,
+                      onPressed: () => Navigator.pop(
+                        context,
+                        TelevisionPlaybackSetting(decoder: value),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text('有声音没画面时可切换尝试', style: TextStyle(fontSize: 14)),
+              const SizedBox(height: 20),
+            ],
             if (enhancement != null)
               VideoEnhancementSettings(
                 controller: enhancement!,

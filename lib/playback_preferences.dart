@@ -2,6 +2,8 @@ import 'video_enhancement_preferences.dart';
 
 const playbackSpeeds = [.5, .75, 1.0, 1.25, 1.5, 2.0, 3.0];
 
+enum TelevisionDecoder { optimized, hardware, software }
+
 class PlaybackPreferences {
   const PlaybackPreferences({
     this.speed = 1,
@@ -10,6 +12,7 @@ class PlaybackPreferences {
     this.danmaku = true,
     this.preload = true,
     this.enhancement = const VideoEnhancementPreferences(),
+    this.televisionDecoder = TelevisionDecoder.optimized,
   });
 
   final double speed;
@@ -18,6 +21,7 @@ class PlaybackPreferences {
   final bool danmaku;
   final bool preload;
   final VideoEnhancementPreferences enhancement;
+  final TelevisionDecoder televisionDecoder;
 
   PlaybackPreferences copyWith({
     double? speed,
@@ -26,6 +30,7 @@ class PlaybackPreferences {
     bool? danmaku,
     bool? preload,
     VideoEnhancementPreferences? enhancement,
+    TelevisionDecoder? televisionDecoder,
   }) => PlaybackPreferences(
     speed: speed ?? this.speed,
     quality: quality ?? this.quality,
@@ -33,6 +38,7 @@ class PlaybackPreferences {
     danmaku: danmaku ?? this.danmaku,
     preload: preload ?? this.preload,
     enhancement: enhancement ?? this.enhancement,
+    televisionDecoder: televisionDecoder ?? this.televisionDecoder,
   );
 
   Map<String, dynamic> toJson() => {
@@ -42,6 +48,7 @@ class PlaybackPreferences {
     'danmaku': danmaku,
     'preload': preload,
     'enhancement': enhancement.toJson(),
+    'televisionDecoder': televisionDecoder.name,
   };
 
   factory PlaybackPreferences.fromJson(Map<String, dynamic> value) {
@@ -60,6 +67,9 @@ class PlaybackPreferences {
       danmaku: danmaku,
       preload: preload,
       enhancement: VideoEnhancementPreferences.fromJson(value['enhancement']),
+      televisionDecoder:
+          TelevisionDecoder.values.asNameMap()[value['televisionDecoder']] ??
+          TelevisionDecoder.optimized,
     );
   }
 }

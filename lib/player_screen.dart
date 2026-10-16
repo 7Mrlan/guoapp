@@ -131,6 +131,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   double _resumePosition = 0;
   bool _rotating = false;
   bool _television = false;
+  TelevisionDecoder _televisionDecoder = TelevisionDecoder.optimized;
+  bool get _televisionDecoderApplies => Platform.isAndroid && _television;
   AppOrientationController? _orientationController;
   bool get _pictureInPictureVisible =>
       _pictureInPictureActive || _pictureInPictureRequested;
@@ -151,6 +153,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     danmaku: _danmakuEnabled,
     preload: _preloadEnabled,
     enhancement: _enhancement.preferences,
+    televisionDecoder: _televisionDecoder,
   );
   String get _qualityLabel => _plan?.local == true
       ? '本地原画'
@@ -175,6 +178,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _autoAdvance = true;
     _danmakuEnabled = preferences.danmaku;
     _preloadEnabled = true;
+    _televisionDecoder = preferences.televisionDecoder;
     _loader = PlaybackLoader(widget.repository);
     _preloader = PlaybackPreloader(widget.repository);
     _danmaku = DanmakuController(widget.repository)
@@ -316,6 +320,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           });
           _scheduleSystemUi();
         }
+        unawaited(_logVideoOutput(parameters));
       }),
     );
     _saveTimer = Timer.periodic(
@@ -1037,16 +1042,35 @@ class _PlayerScreenState extends State<PlayerScreen>
         if (platform is NativePlayer) {
           if (Platform.isAndroid) {
             if (_television) {
-              await platform.setProperty('hwdec', 'mediacodec-copy');
+              final optimized =
+                  _televisionDecoder == TelevisionDecoder.optimized;
+              await platform.setProperty(
+                'hwdec',
+                _televisionDecoder == TelevisionDecoder.software
+                    ? 'no'
+                    : 'mediacodec-copy',
+              );
               await platform.setProperty('hwdec-codecs', 'all');
-              await platform.setProperty('opengl-pbo', 'yes');
-              await platform.setProperty('video-latency-hacks', 'yes');
+              await platform.setProperty(
+                'opengl-pbo',
+                optimized ? 'yes' : 'no',
+              );
+              await platform.setProperty(
+                'video-latency-hacks',
+                optimized ? 'yes' : 'no',
+              );
               await platform.setProperty('scale', 'bilinear');
               await platform.setProperty('cscale', 'bilinear');
               await platform.setProperty('dscale', 'bilinear');
               await platform.setProperty('correct-downscaling', 'no');
-              await platform.setProperty('vd-lavc-skiploopfilter', 'all');
-              await platform.setProperty('vd-lavc-skipidct', 'all');
+              await platform.setProperty(
+                'vd-lavc-skiploopfilter',
+                optimized ? 'all' : 'default',
+              );
+              await platform.setProperty(
+                'vd-lavc-skipidct',
+                optimized ? 'all' : 'default',
+              );
               await platform.setProperty('vd-lavc-threads', '2');
               await platform.setProperty(
                 'demuxer-max-bytes',
@@ -1154,6 +1178,24 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
+  Future<void> _logVideoOutput(VideoParams parameters) async {
+    final platform = _player.platform;
+    if (_closed ||
+        parameters.pixelformat == null ||
+        platform is! NativePlayer) {
+      return;
+    }
+    final generation = _generation;
+    try {
+      final hwdec = await platform.getProperty('hwdec-current');
+      final vo = await platform.getProperty('current-vo');
+      if (_closed) return;
+      DiaryService.add(
+        '[Video] generation=$generation television=$_television decoder=${_televisionDecoderApplies ? _televisionDecoder.name : 'n/a'} hwdec=$hwdec vo=$vo format=${parameters.pixelformat} hw_format=${parameters.hwPixelformat} size=${parameters.w}x${parameters.h}',
+      );
+    } catch (_) {}
+  }
+
   Future<void> _switchOnline() async {
     _forceOnline = true;
     await _retry();
@@ -1244,6 +1286,8 @@ class _PlayerScreenState extends State<PlayerScreen>
       return;
     }
     final qualityChanged = nextPreferences.quality != _requestedQuality;
+    final decoderChanged =
+        nextPreferences.televisionDecoder != _televisionDecoder;
     _enhancement.setPreferences(nextPreferences.enhancement);
     setState(() {
       _speed = nextPreferences.speed;
@@ -1251,6 +1295,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       _autoAdvance = true;
       _danmakuEnabled = nextPreferences.danmaku;
       _preloadEnabled = true;
+      _televisionDecoder = nextPreferences.televisionDecoder;
     });
     _danmaku.setEnabled(_danmakuEnabled);
     _syncDanmaku();
@@ -1260,6 +1305,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     await _interactions.applySpeed();
     if (qualityChanged && _plan?.local != true) {
       await _retry(quality: nextPreferences.quality);
+    } else if (decoderChanged && _televisionDecoderApplies) {
+      await _retry();
     }
   }
 
@@ -1462,6 +1509,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 unawaited(_enhancement.toggleCompare());
                 Navigator.pop(menuContext);
               },
+              decoder: _televisionDecoderApplies ? _televisionDecoder : null,
             ),
           ),
         ),
@@ -1479,6 +1527,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           danmaku: selection.danmaku,
           preload: true,
           enhancement: selection.enhancement,
+          televisionDecoder: selection.decoder,
         ),
       );
     } catch (_) {
