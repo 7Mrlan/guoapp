@@ -209,6 +209,35 @@ class LocalStore extends ChangeNotifier {
   }
 
   String _seriesKey([String? id]) => 'seriesCandidates.${id ?? _current}';
+  String _followChecksKey([String? id]) => 'followChecks.${id ?? _current}';
+
+  Map<String, FollowCheck> get followChecks {
+    try {
+      final data =
+          jsonDecode(preferences.getString(_followChecksKey()) ?? '{}') as Map;
+      return {
+        for (final entry in data.entries)
+          entry.key as String: FollowCheck.fromJson(entry.value),
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> saveFollowChecks(
+    Map<String, FollowCheck> checks, {
+    required int epoch,
+  }) => _queue(() async {
+    if (locked || epoch != _epoch) return;
+    await preferences.setString(
+      _followChecksKey(),
+      jsonEncode({
+        for (final entry in checks.entries)
+          if (_favorites.containsKey(entry.key))
+            entry.key: entry.value.toJson(),
+      }),
+    );
+  });
 
   void _loadSeriesCandidates() {
     _seriesCandidates.clear();
@@ -931,6 +960,7 @@ class LocalStore extends ChangeNotifier {
       ),
     }, remove: LocalSnapshot.libraryKeys.map((key) => _key(key, id)));
     await preferences.remove(_seriesKey(id));
+    await preferences.remove(_followChecksKey(id));
     _profiles = profiles;
     _notify();
   });

@@ -100,6 +100,7 @@ abstract class AppRepository {
   Future<void> cancelSuggestions() async {}
   Future<void> cancelRecommendations() async {}
   Future<Drama?> supplementMetadata(Drama drama) async => null;
+  Future<Drama> followCheck(Drama drama) async => (await detail(drama)).drama;
   Future<CatalogPage> recommendations(
     String genre, {
     bool more = false,
@@ -364,6 +365,16 @@ class NativeRepository extends AppRepository {
     }
     final result = await _read('metadata', {
       'action': 'metadata',
+      'drama': drama.toJson(),
+    });
+    return Drama.fromJson(Map<String, dynamic>.from(result['drama'] as Map));
+  }
+
+  @override
+  Future<Drama> followCheck(Drama drama) async {
+    _authorize(drama.source);
+    final result = await _call({
+      'action': 'followCheck',
       'drama': drama.toJson(),
     });
     return Drama.fromJson(Map<String, dynamic>.from(result['drama'] as Map));
