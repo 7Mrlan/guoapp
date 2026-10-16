@@ -2144,6 +2144,11 @@ class _PlayerScreenState extends State<PlayerScreen>
       currentIndex: _index,
       compact: compact,
       title: compact ? '剧集' : '选集',
+      note:
+          widget.detail.drama.releaseStatus.isNotEmpty &&
+              widget.detail.drama.releaseStatus != 'unknown'
+          ? widget.detail.drama.releaseLabel
+          : '',
       onSelected: (index) => _play(index),
     ),
   );
