@@ -62,7 +62,7 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
         }
         release {
             signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
