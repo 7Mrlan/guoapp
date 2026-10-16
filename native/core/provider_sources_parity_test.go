@@ -74,9 +74,11 @@ func TestYeguoDomainAliasesAndDefaultEndpoint(t *testing.T) {
 		"https://analyze.buxefaex.cc/",
 		"https://some-line.buxefaex.cc/drama/video/1/",
 		"https://some-backup.fzchosdi.cc/drama/video/1/",
+		"https://some-backup.lwblvxvy.cc/drama/video/1/",
 		"https://delta.ygrwdsgt.cc/",
 		"https://yeguodj.com/",
 		"https://ygdj7.com/",
+		"https://ygdj15.com/",
 	} {
 		if got := providerSourceForURL(address); got != sourceYeguo {
 			t.Fatalf("yeguo domain was not recognized: %s -> %s", address, got)
@@ -87,6 +89,7 @@ func TestYeguoDomainAliasesAndDefaultEndpoint(t *testing.T) {
 		"delta.ygrwdsgt.cc",
 		"yeguodj.com",
 		"ygdj7.com",
+		"ygdj15.com",
 	} {
 		if got := canonicalProviderSource(alias); got != sourceYeguo {
 			t.Fatalf("yeguo source alias was not canonicalized: %s -> %s", alias, got)
@@ -99,9 +102,10 @@ func TestYeguoTransitPageDiscoversCurrentLineDomains(t *testing.T) {
 words = 'abandon,ability,analyze,chair'.split(',');
 lineAry = Vx.map(Vx.range(1, 3), function () { return location.protocol + '//' + words.random() + '.buxefaex.cc' });
 backupLine = Vx.map(Vx.range(1, 3), function () { return location.protocol + '//' + words.random() + '.fzchosdi.cc'; });
+spareLine = Vx.map(Vx.range(1, 3), function () { return location.protocol + '//' + words.random() + '.lwblvxvy.cc'; });
 </script>`))
 	sites := yeguoTransitSites(`<script>document.write(Base64.decode("` + encoded + `"));</script>`)
-	want := []string{"https://analyze.buxefaex.cc", "https://ability.buxefaex.cc", "https://abandon.buxefaex.cc", "https://analyze.fzchosdi.cc"}
+	want := []string{"https://analyze.buxefaex.cc", "https://ability.buxefaex.cc", "https://abandon.buxefaex.cc", "https://analyze.fzchosdi.cc", "https://analyze.lwblvxvy.cc"}
 	for _, site := range want {
 		found := false
 		for _, candidate := range sites {

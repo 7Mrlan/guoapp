@@ -30,7 +30,7 @@ import (
 
 const (
 	yeguoBaseURL    = "https://analyze.buxefaex.cc"
-	yeguoTransitURL = "https://ygdj7.com"
+	yeguoTransitURL = "https://ygdj15.com"
 )
 
 var (
@@ -114,7 +114,8 @@ func isYeguoActiveSite(raw string) bool {
 	host := strings.ToLower(address.Hostname())
 	return host == "analyze.buxefaex.cc" ||
 		strings.HasSuffix(host, ".buxefaex.cc") ||
-		strings.HasSuffix(host, ".fzchosdi.cc")
+		strings.HasSuffix(host, ".fzchosdi.cc") ||
+		strings.HasSuffix(host, ".lwblvxvy.cc")
 }
 
 func yeguoTransitDecodedText(body string) string {
@@ -182,7 +183,7 @@ func yeguoTransitSites(body string) []string {
 	for _, match := range yeguoTransitLiteral.FindAllString(text, 32) {
 		if parsed, err := url.Parse(match); err == nil {
 			host := strings.ToLower(parsed.Hostname())
-			if strings.HasSuffix(host, ".buxefaex.cc") || strings.HasSuffix(host, ".fzchosdi.cc") {
+			if strings.HasSuffix(host, ".buxefaex.cc") || strings.HasSuffix(host, ".fzchosdi.cc") || strings.HasSuffix(host, ".lwblvxvy.cc") {
 				add(match)
 			}
 		}
