@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 export 'app_build.dart';
 
@@ -53,7 +54,12 @@ class AppDevice {
     AppDevice fallback = const AppDevice(),
   }) async {
     if (defaultTargetPlatform != TargetPlatform.android) {
-      return const AppDevice();
+      try {
+        final info = await PackageInfo.fromPlatform();
+        return AppDevice(version: info.version);
+      } catch (_) {
+        return fallback;
+      }
     }
     try {
       final data = await channel

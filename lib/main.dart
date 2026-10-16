@@ -23,7 +23,6 @@ import 'diary_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  DiaryService.add('[App] 应用启动，版本: 0.2.69+76, 平台: ${Platform.operatingSystem}');
   if (Platform.isAndroid) {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setSystemUIOverlayStyle(AppTheme.systemBars(Brightness.dark));
@@ -34,6 +33,10 @@ Future<void> main() async {
   MediaKit.ensureInitialized();
   VideoEnhancementAssets.registerLicenses();
   final device = await AppDevice.detect();
+  DiaryService.add(
+    '[App] 应用启动，版本: ${device.version}, '
+    '平台: ${Platform.operatingSystem}',
+  );
   runApp(AppBootstrap(device: device));
 }
 
