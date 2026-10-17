@@ -33,9 +33,12 @@ Future<void> main() async {
   MediaKit.ensureInitialized();
   VideoEnhancementAssets.registerLicenses();
   final device = await AppDevice.detect();
+  final rendering = Platform.isAndroid
+      ? ', 渲染: ${await AppDevice.compatibleRendering() ? 'skia' : 'impeller'}'
+      : '';
   DiaryService.add(
     '[App] 应用启动，版本: ${device.version}, '
-    '平台: ${Platform.operatingSystem}',
+    '平台: ${Platform.operatingSystem}$rendering',
   );
   runApp(AppBootstrap(device: device));
 }

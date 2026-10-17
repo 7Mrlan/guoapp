@@ -1485,6 +1485,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     setState(() => _panelOpen = true);
     TelevisionPlaybackSetting? selection;
     try {
+      final compatibleRendering = _televisionDecoderApplies
+          ? await AppDevice.compatibleRendering()
+          : null;
+      if (!context.mounted || _closed) return;
       selection = await showDialog<TelevisionPlaybackSetting>(
         context: context,
         builder: (menuContext) => AnimatedBuilder(
@@ -1510,6 +1514,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 Navigator.pop(menuContext);
               },
               decoder: _televisionDecoderApplies ? _televisionDecoder : null,
+              compatibleRendering: compatibleRendering,
             ),
           ),
         ),
@@ -1518,6 +1523,11 @@ class _PlayerScreenState extends State<PlayerScreen>
       if (mounted && !_closed) setState(() => _panelOpen = false);
     }
     if (selection == null || !mounted || _closed) return;
+    final compatibleRendering = selection.compatibleRendering;
+    if (compatibleRendering != null) {
+      await _switchCompatibleRendering(compatibleRendering);
+      return;
+    }
     try {
       await _setPreferences(
         _preferences.copyWith(
@@ -1532,6 +1542,34 @@ class _PlayerScreenState extends State<PlayerScreen>
       );
     } catch (_) {
       _notice('播放偏好未能保存，请重试');
+    }
+  }
+
+  Future<void> _switchCompatibleRendering(bool enabled) async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Theme(
+        data: televisionTheme(AppTheme.dark),
+        child: AlertDialog(
+          title: Text(enabled ? '开启兼容渲染模式？' : '关闭兼容渲染模式？'),
+          content: const Text('需要重启应用才能生效，正在进行的下载会中断。'),
+          actions: [
+            TextButton(
+              autofocus: true,
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('立即重启'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (accepted != true || !mounted || _closed) return;
+    if (!await AppDevice.setCompatibleRendering(enabled)) {
+      _notice('兼容渲染模式未能保存，请重试');
     }
   }
 

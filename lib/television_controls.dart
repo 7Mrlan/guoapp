@@ -538,6 +538,7 @@ class TelevisionPlaybackSetting {
     this.preload,
     this.enhancement,
     this.decoder,
+    this.compatibleRendering,
   });
   final double? speed;
   final int? quality;
@@ -546,6 +547,7 @@ class TelevisionPlaybackSetting {
   final bool? preload;
   final VideoEnhancementPreferences? enhancement;
   final TelevisionDecoder? decoder;
+  final bool? compatibleRendering;
 }
 
 class TelevisionSettingsDialog extends StatelessWidget {
@@ -566,6 +568,7 @@ class TelevisionSettingsDialog extends StatelessWidget {
     this.enhancement,
     this.onCompareEnhancement,
     this.decoder,
+    this.compatibleRendering,
   });
   final double speed;
   final int quality;
@@ -582,6 +585,7 @@ class TelevisionSettingsDialog extends StatelessWidget {
   final VideoEnhancementController? enhancement;
   final VoidCallback? onCompareEnhancement;
   final TelevisionDecoder? decoder;
+  final bool? compatibleRendering;
 
   @override
   Widget build(BuildContext context) => AlertDialog(
@@ -660,6 +664,24 @@ class TelevisionSettingsDialog extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text('有声音没画面时可切换尝试', style: TextStyle(fontSize: 14)),
+              const SizedBox(height: 20),
+            ],
+            if (compatibleRendering != null) ...[
+              RemoteButton(
+                key: const ValueKey('tv-compatible-rendering'),
+                label: compatibleRendering! ? '兼容渲染模式：开' : '兼容渲染模式：关',
+                onPressed: () => Navigator.pop(
+                  context,
+                  TelevisionPlaybackSetting(
+                    compatibleRendering: !compatibleRendering!,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '切换解码方式仍没画面时可尝试，需重启应用生效',
+                style: TextStyle(fontSize: 14),
+              ),
               const SizedBox(height: 20),
             ],
             if (enhancement != null)

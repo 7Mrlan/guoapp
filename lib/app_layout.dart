@@ -108,6 +108,27 @@ class AppDevice {
       await channel.invokeMethod('resetBrightness');
     } catch (_) {}
   }
+
+  static Future<bool> compatibleRendering() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      return await channel.invokeMethod<bool>('compatibleRendering') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> setCompatibleRendering(bool enabled) async {
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      await channel.invokeMethod('setCompatibleRendering', {
+        'enabled': enabled,
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 class AppLayout extends InheritedWidget {
