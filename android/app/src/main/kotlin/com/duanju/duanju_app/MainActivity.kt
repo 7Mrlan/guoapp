@@ -22,6 +22,7 @@ import android.util.Rational
 import android.view.InputDevice
 import android.view.WindowManager
 import android.provider.Settings
+import androidx.annotation.ChecksSdkIntAtLeast
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -229,6 +230,7 @@ class MainActivity : FlutterActivity() {
             }
     }
 
+    @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.O)
     private fun pictureInPictureSupported(): Boolean {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)

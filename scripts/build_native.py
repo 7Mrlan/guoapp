@@ -49,9 +49,9 @@ if options.platform == 'android':
     host = {'Darwin': 'darwin-x86_64', 'Linux': 'linux-x86_64', 'Windows': 'windows-x86_64'}[platform.system()]
     compilers = ndk / 'toolchains' / 'llvm' / 'prebuilt' / host / 'bin'
     mappings = {
-        'arm64-v8a': ('arm64', 'aarch64-linux-android26-clang'),
-        'armeabi-v7a': ('arm', 'armv7a-linux-androideabi26-clang'),
-        'x86_64': ('amd64', 'x86_64-linux-android26-clang'),
+        'arm64-v8a': ('arm64', 'aarch64-linux-android24-clang'),
+        'armeabi-v7a': ('arm', 'armv7a-linux-androideabi24-clang'),
+        'x86_64': ('amd64', 'x86_64-linux-android24-clang'),
     }
     for abi in options.abi or list(mappings):
         architecture, name = mappings[abi]
