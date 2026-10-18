@@ -440,7 +440,9 @@ class DramaTile extends StatelessWidget {
                 Positioned(
                   left: 6,
                   right: 6,
-                  bottom: 6,
+                  bottom: drama.episodes > 0
+                      ? 13 + MediaQuery.textScalerOf(context).scale(12) * 1.4
+                      : 6,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: .72),
