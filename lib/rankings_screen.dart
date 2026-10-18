@@ -321,14 +321,6 @@ class _RankingsScreenState extends State<RankingsScreen> {
                                 'rank-${item.rank}-${item.drama.id}',
                               ),
                               borderRadius: BorderRadius.circular(12),
-                              onFocusChange: (focused) {
-                                if (focused) {
-                                  Scrollable.ensureVisible(
-                                    context,
-                                    alignment: .4,
-                                  );
-                                }
-                              },
                               onTap: () => Navigator.push<void>(
                                 context,
                                 MaterialPageRoute(
