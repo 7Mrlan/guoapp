@@ -12,6 +12,7 @@ import 'catalog_sort.dart';
 import 'follow_state.dart';
 import 'hongguo_series.dart';
 import 'lan_sync_models.dart';
+import 'theme_color.dart';
 
 part 'local_store_sync.dart';
 
@@ -347,6 +348,12 @@ class LocalStore extends ChangeNotifier {
     return {'light', 'dark', 'system'}.contains(value) ? value! : 'system';
   }
 
+  bool get followSystemColor =>
+      preferences.getBool('followSystemColor') ?? true;
+  ThemeColor get themeColor =>
+      ThemeColor.byName(preferences.getString('themeColor')) ??
+      ThemeColor.orange;
+
   bool get autoExport => !locked && (_bool('autoExport') ?? false);
   bool get exportPosters => !locked && (_bool('exportPosters') ?? false);
   String get source {
@@ -520,6 +527,14 @@ class LocalStore extends ChangeNotifier {
       {'light', 'dark', 'system'}.contains(value)
       ? _setting('themeMode', value)
       : Future.value();
+  Future<void> setFollowSystemColor(bool value) => _queue(() async {
+    await preferences.setBool('followSystemColor', value);
+    _notify();
+  });
+  Future<void> setThemeColor(ThemeColor value) => _queue(() async {
+    await preferences.setString('themeColor', value.name);
+    _notify();
+  });
   Future<void> setPlaybackPreferences(PlaybackPreferences value) {
     PlaybackPreferences.fromJson(value.toJson());
     return _setting(_key('playback'), jsonEncode(value.toJson()));
@@ -974,6 +989,8 @@ class LocalStore extends ChangeNotifier {
       'profiles': _profiles.map((profile) => profile.toJson()).toList(),
       'displayMode': displayMode,
       'themeMode': themeMode,
+      'followSystemColor': followSystemColor,
+      'themeColor': themeColor.name,
       'autoExport': autoExport,
       'exportPosters': exportPosters,
       'forceLogin': forceLogin,
@@ -1029,6 +1046,12 @@ class LocalStore extends ChangeNotifier {
     if (data.containsKey('themeMode') &&
         !{'light', 'dark', 'system'}.contains(data['themeMode'])) {
       throw const FormatException('备份主题设置无效');
+    }
+    if (data.containsKey('followSystemColor') &&
+            data['followSystemColor'] is! bool ||
+        data.containsKey('themeColor') &&
+            ThemeColor.byName(data['themeColor']) == null) {
+      throw const FormatException('备份主题色设置无效');
     }
     if (data.containsKey('forceLogin') && data['forceLogin'] is! bool) {
       throw const FormatException('备份登录设置无效');
@@ -1140,6 +1163,12 @@ class LocalStore extends ChangeNotifier {
       });
     }
     await _commit(values, replace: true);
+    if (data['followSystemColor'] case final bool follow) {
+      await preferences.setBool('followSystemColor', follow);
+    }
+    if (ThemeColor.byName(data['themeColor']) case final color?) {
+      await preferences.setString('themeColor', color.name);
+    }
     for (final key in preferences.getKeys().toList()) {
       if (key.startsWith('seriesCandidates.')) await preferences.remove(key);
     }
