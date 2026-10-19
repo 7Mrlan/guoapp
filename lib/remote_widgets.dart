@@ -3,6 +3,56 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter/services.dart';
 
+import 'app_layout.dart';
+
+class RemoteTextInput extends StatelessWidget {
+  const RemoteTextInput({super.key, required this.child});
+  final Widget child;
+
+  KeyEventResult _key(FocusNode node, KeyEvent event) {
+    final focus = FocusManager.instance.primaryFocus;
+    final editable = focus?.context
+        ?.findAncestorStateOfType<EditableTextState>();
+    if (editable == null ||
+        (event is! KeyDownEvent && event is! KeyRepeatEvent)) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowUp) {
+      focus!.focusInDirection(TraversalDirection.up);
+    } else if (key == LogicalKeyboardKey.arrowDown) {
+      focus!.focusInDirection(TraversalDirection.down);
+    } else if (key == LogicalKeyboardKey.escape ||
+        key == LogicalKeyboardKey.goBack) {
+      if (event is KeyDownEvent &&
+          !focus!.focusInDirection(TraversalDirection.down) &&
+          !focus.focusInDirection(TraversalDirection.up)) {
+        return KeyEventResult.ignored;
+      }
+    } else if (event is KeyDownEvent &&
+        [
+          LogicalKeyboardKey.select,
+          LogicalKeyboardKey.enter,
+          LogicalKeyboardKey.numpadEnter,
+        ].contains(key)) {
+      editable.requestKeyboard();
+    } else {
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
+  }
+
+  @override
+  Widget build(BuildContext context) => AppLayout.isTelevision(context)
+      ? Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onKeyEvent: _key,
+          child: child,
+        )
+      : child;
+}
+
 class RemoteTarget extends StatefulWidget {
   const RemoteTarget({
     super.key,
