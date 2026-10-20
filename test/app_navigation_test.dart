@@ -1,6 +1,7 @@
 import 'package:duanju_app/local_store.dart';
 import 'package:duanju_app/ui/app.dart';
 import 'package:duanju_app/ui/preview/component_preview.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,7 +29,9 @@ void main() {
     testWidgets('escape closes the top popup first, then leaves the page '
         '($mode)', (tester) async {
       final store = await _open(tester, mode: mode);
-      await tester.tap(find.byTooltip('组件预览'));
+      await tester.tap(find.byKey(const ValueKey('nav-mine')));
+      await _settle(tester);
+      await tester.tap(find.text('组件预览'));
       await _settle(tester);
       expect(find.byType(ComponentPreview), findsOneWidget);
 
@@ -46,11 +49,11 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await _settle(tester);
       expect(find.byType(ComponentPreview), findsNothing);
-      expect(find.text('外观'), findsOneWidget);
+      expect(find.text('组件预览'), findsOneWidget);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pump();
-      expect(find.text('外观'), findsOneWidget);
+      expect(find.text('组件预览'), findsOneWidget);
       store.dispose();
     });
   }
@@ -59,6 +62,10 @@ void main() {
     tester,
   ) async {
     final store = await _open(tester, mode: 'television');
+    await tester.tap(find.byKey(const ValueKey('nav-mine')));
+    await _settle(tester);
+    await tester.tap(find.text('外观'));
+    await _settle(tester);
     await tester.tap(find.text('界面模式'));
     await _settle(tester);
     expect(find.text('手机 / 电脑'), findsOneWidget);

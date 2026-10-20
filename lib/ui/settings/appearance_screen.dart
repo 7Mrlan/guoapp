@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../local_store.dart';
 import '../../theme_color.dart';
-import '../preview/component_preview.dart';
 import '../widgets/group_card.dart';
 
 const _displayModes = {
   'auto': '自动识别设备',
   'television': '电视 / 遥控器',
   'standard': '手机 / 电脑',
+  'pad': '平板',
 };
 
 class AppearanceScreen extends StatelessWidget {
@@ -60,19 +60,7 @@ class AppearanceScreen extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final following = systemColorAvailable && store.followSystemColor;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('外观'),
-        actions: [
-          IconButton(
-            tooltip: '组件预览',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute<void>(builder: (_) => const ComponentPreview()),
-            ),
-            icon: const Icon(Icons.widgets_outlined),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('外观')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [

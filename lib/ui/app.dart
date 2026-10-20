@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -7,7 +8,7 @@ import '../core_bridge.dart';
 import '../local_store.dart';
 import '../theme_color.dart';
 import 'app_scope.dart';
-import 'settings/appearance_screen.dart';
+import 'shell/app_shell.dart';
 import 'theme/app_theme.dart';
 import 'theme/system_color.dart';
 
@@ -132,6 +133,15 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
             child: AppScope(
               repository: widget.repository,
               television: television,
+              desktop:
+                  mode != 'pad' &&
+                  switch (defaultTargetPlatform) {
+                    TargetPlatform.windows ||
+                    TargetPlatform.macOS ||
+                    TargetPlatform.linux => true,
+                    _ => false,
+                  },
+              systemColorAvailable: _systemColor != null,
               child: FocusTraversalGroup(child: child!),
             ),
           ),
@@ -145,10 +155,7 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
         LocalStore(locked: true) => const _BootScreen(
           error: '当前用户需要验证，用户页面还在重建中',
         ),
-        _ => AppearanceScreen(
-          store: store,
-          systemColorAvailable: _systemColor != null,
-        ),
+        _ => AppShell(store: store),
       },
     );
   }

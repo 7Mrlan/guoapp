@@ -340,7 +340,9 @@ class LocalStore extends ChangeNotifier {
       _configurationError == null ? _bool(_key('hideVip')) ?? true : true;
   String get displayMode {
     final value = _configurationError == null ? _string('displayMode') : null;
-    return {'auto', 'television', 'standard'}.contains(value) ? value! : 'auto';
+    return {'auto', 'television', 'standard', 'pad'}.contains(value)
+        ? value!
+        : 'auto';
   }
 
   String get themeMode {
@@ -353,6 +355,7 @@ class LocalStore extends ChangeNotifier {
   ThemeColor get themeColor =>
       ThemeColor.byName(preferences.getString('themeColor')) ??
       ThemeColor.orange;
+  bool get sideBarExpanded => preferences.getBool('sideBarExpanded') ?? true;
 
   bool get autoExport => !locked && (_bool('autoExport') ?? false);
   bool get exportPosters => !locked && (_bool('exportPosters') ?? false);
@@ -520,7 +523,7 @@ class LocalStore extends ChangeNotifier {
   }
 
   Future<void> setDisplayMode(String value) =>
-      {'auto', 'television', 'standard'}.contains(value)
+      {'auto', 'television', 'standard', 'pad'}.contains(value)
       ? _setting('displayMode', value)
       : Future.value();
   Future<void> setThemeMode(String value) =>
@@ -533,6 +536,10 @@ class LocalStore extends ChangeNotifier {
   });
   Future<void> setThemeColor(ThemeColor value) => _queue(() async {
     await preferences.setString('themeColor', value.name);
+    _notify();
+  });
+  Future<void> setSideBarExpanded(bool value) => _queue(() async {
+    await preferences.setBool('sideBarExpanded', value);
     _notify();
   });
   Future<void> setPlaybackPreferences(PlaybackPreferences value) {
@@ -1121,7 +1128,12 @@ class LocalStore extends ChangeNotifier {
       ),
       'activeProfile': profiles.firstWhere((profile) => profile.admin).id,
       'displayMode':
-          {'auto', 'television', 'standard'}.contains(data['displayMode'])
+          {
+            'auto',
+            'television',
+            'standard',
+            'pad',
+          }.contains(data['displayMode'])
           ? data['displayMode'] as String
           : 'auto',
       'themeMode': data['themeMode'] as String? ?? themeMode,

@@ -58,6 +58,15 @@ abstract final class AppTheme {
           color: scheme.onSurface,
         ),
       ),
+      navigationBarTheme: NavigationBarThemeData(
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return theme.textTheme.labelMedium?.copyWith(
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
+          );
+        }),
+      ),
     );
     return television ? _television(titled) : titled;
   }
