@@ -12,7 +12,6 @@ import 'pending_pages.dart';
 
 enum AppTab {
   explore('发现', Icons.explore_outlined, Icons.explore),
-  rank('榜单', Icons.leaderboard_outlined, Icons.leaderboard),
   follow('追剧', Icons.bookmark_border_rounded, Icons.bookmark_rounded),
   mine('我的', Icons.person_outline_rounded, Icons.person_rounded);
 

@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/app_harness.dart';
 
-const _tabs = ['explore', 'rank', 'follow', 'mine'];
+const _tabs = ['explore', 'follow', 'mine'];
 
 void main() {
   group('phone', () {
@@ -57,7 +57,7 @@ void main() {
       await tester.tap(find.byTooltip('收起侧栏'));
       await settle(tester);
       expect(store.sideBarExpanded, isFalse);
-      expect(find.text('榜单'), findsNothing);
+      expect(find.text('追剧'), findsNothing);
 
       await tester.tap(find.byTooltip('展开侧栏'));
       await settle(tester);
@@ -65,7 +65,7 @@ void main() {
 
       tester.view.physicalSize = const Size(720, 800);
       await settle(tester);
-      expect(find.text('榜单'), findsNothing);
+      expect(find.text('追剧'), findsNothing);
       expect(find.byTooltip('展开侧栏'), findsNothing);
       expect(find.byTooltip('收起侧栏'), findsNothing);
     });
@@ -87,12 +87,15 @@ void main() {
           ];
           final expanded = icons();
           expect(tester.getSize(bar).width, desktop ? 240 : 232);
-          expect(tester.getSize(navItem('rank')).height, desktop ? 48 : 56);
+          expect(tester.getSize(navItem('follow')).height, desktop ? 48 : 56);
 
           await tester.tap(find.byTooltip('收起侧栏'));
           await settle(tester);
           expect(tester.getSize(bar).width, desktop ? 80 : 88);
-          expect(tester.getSize(navItem('rank')), Size(56, desktop ? 48 : 56));
+          expect(
+            tester.getSize(navItem('follow')),
+            Size(56, desktop ? 48 : 56),
+          );
           expect(icons(), expanded);
           expect(
             tester.getCenter(find.byIcon(Icons.menu_rounded)).dx,
@@ -136,7 +139,7 @@ void main() {
       tabFocus(tester, 'explore').requestFocus();
       await settle(tester);
 
-      for (final tab in ['rank', 'explore', 'mine', 'follow']) {
+      for (final tab in ['mine', 'explore', 'follow']) {
         final from = _tabs.indexWhere(
           (name) => tabFocus(tester, name).hasPrimaryFocus,
         );

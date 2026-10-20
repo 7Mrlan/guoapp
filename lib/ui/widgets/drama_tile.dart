@@ -120,6 +120,7 @@ class DramaTile extends StatelessWidget {
     required this.drama,
     required this.onTap,
     this.subtitle,
+    this.rank,
     this.onMore,
     this.focusNode,
     this.autofocus = false,
@@ -127,6 +128,7 @@ class DramaTile extends StatelessWidget {
   final Drama drama;
   final VoidCallback onTap;
   final String? subtitle;
+  final int? rank;
   final VoidCallback? onMore;
   final FocusNode? focusNode;
   final bool autofocus;
@@ -152,8 +154,10 @@ class DramaTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _PosterButton(
-    cover: DramaCover(drama: drama, radius: _coverRadius),
-    label: '${drama.title}，${drama.episodes}集${drama.vip ? '，VIP' : ''}',
+    cover: DramaCover(drama: drama, radius: _coverRadius, rank: rank),
+    label:
+        '${rank == null ? '' : '第$rank名，'}'
+        '${drama.title}，${drama.episodes}集${drama.vip ? '，VIP' : ''}',
     onTap: onTap,
     onMore: onMore,
     focusNode: focusNode,

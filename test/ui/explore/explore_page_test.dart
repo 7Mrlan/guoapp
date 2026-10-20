@@ -1,5 +1,7 @@
+import 'package:duanju_app/ranking_models.dart';
 import 'package:duanju_app/ui/explore/explore_hero.dart';
 import 'package:duanju_app/ui/shell/pending_pages.dart';
+import 'package:duanju_app/ui/widgets/cover_image.dart';
 import 'package:duanju_app/ui/widgets/drama_tile.dart';
 import 'package:duanju_app/ui/widgets/focus_ring.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +41,27 @@ void main() {
     expect(find.text('看到第 12 集 · 共 80 集'), findsOneWidget);
     expect(find.text('继续第 13 集'), findsOneWidget);
     expect(find.text('推荐剧一'), findsOneWidget);
+  });
+
+  testWidgets('a ranking tab shows ranks on the covers', (tester) async {
+    final repository = FakeRepository()
+      ..boardList = const [
+        RankingBoard(id: 'hongguo-hot', source: 'hongguo', name: '总热播榜'),
+      ];
+    await pumpApp(tester, repository: repository);
+    expect(find.byType(RankBadge), findsNothing);
+
+    await tester.tap(find.text('总热播榜'));
+    await settle(tester);
+    expect(find.byType(ExploreHero), findsNothing);
+    expect(find.text('hongguo-hot第1名'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(RankBadge).first,
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a failed load offers a retry', (tester) async {

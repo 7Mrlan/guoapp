@@ -207,6 +207,7 @@ class ExplorePageState extends State<ExplorePage> {
               sliver: DramaSliverGrid(
                 width: constraints.maxWidth - inset * 2,
                 items: items,
+                rankOf: explore.rankOf,
                 autofocus: television && hero == null,
                 onOpen: _open,
               ),

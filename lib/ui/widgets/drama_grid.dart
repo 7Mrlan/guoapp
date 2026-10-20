@@ -47,11 +47,13 @@ class DramaSliverGrid extends StatelessWidget {
     required this.width,
     required this.items,
     required this.onOpen,
+    this.rankOf,
     this.autofocus = false,
   });
   final double width;
   final List<Drama> items;
   final ValueChanged<Drama> onOpen;
+  final int? Function(Drama drama)? rankOf;
   final bool autofocus;
 
   KeyEventResult _wrapRow(int index, int columns, KeyEvent event) {
@@ -86,6 +88,7 @@ class DramaSliverGrid extends StatelessWidget {
           onKeyEvent: (_, event) => _wrapRow(index, columns, event),
           child: DramaTile(
             drama: drama,
+            rank: rankOf?.call(drama),
             autofocus: autofocus && index == 0,
             onTap: () => onOpen(drama),
           ),

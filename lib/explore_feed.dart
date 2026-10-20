@@ -6,9 +6,13 @@ import 'core_bridge.dart';
 import 'drama_feed.dart';
 import 'local_store.dart';
 import 'models.dart';
+import 'ranking_models.dart';
 import 'source_catalog.dart';
 
 const recommendTab = CatalogCategory('app:recommend', '推荐');
+
+CatalogCategory rankingTab(RankingBoard board) =>
+    CatalogCategory('app:rank:${board.id}', board.name);
 
 class ExploreFeed extends ChangeNotifier {
   ExploreFeed(this.repository, this.store) {
@@ -21,6 +25,7 @@ class ExploreFeed extends ChangeNotifier {
   SourceCatalog? _catalog;
   CatalogCategory _tab = CatalogCategory.all;
   DramaFeed? _feed;
+  Map<String, int> _ranks = const {};
   bool _disposed = false;
 
   SourceSite? get source => _catalog?.source;
@@ -28,10 +33,19 @@ class ExploreFeed extends ChangeNotifier {
   CatalogCategory get tab => _tab;
   bool get recommending => _tab.id == recommendTab.id;
 
-  List<CatalogCategory> get tabs => [
-    if (_catalog?.recommends ?? false) recommendTab,
-    ...?_catalog?.categories,
-  ];
+  List<CatalogCategory> get tabs {
+    final catalog = _catalog;
+    if (catalog == null) return const [];
+    final [all, ...genres] = catalog.categories;
+    return [
+      if (catalog.recommends) recommendTab,
+      all,
+      for (final board in catalog.boards) rankingTab(board),
+      ...genres,
+    ];
+  }
+
+  int? rankOf(Drama drama) => _ranks[drama.id];
 
   WatchEntry? get resume {
     final source = this.source;
@@ -96,11 +110,20 @@ class ExploreFeed extends ChangeNotifier {
     if (recommending) unawaited(repository.cancelRecommendations());
     _tab = tab;
     _feed?.dispose();
+    final board = catalog.boards
+        .where((board) => rankingTab(board).id == tab.id)
+        .firstOrNull;
+    final ranks = _ranks = <String, int>{};
     final feed = _feed = tab.id == recommendTab.id
         ? DramaFeed(
             cumulative: true,
             load: (page, force) =>
                 _saved(catalog.recommendations(more: page > 1, force: force)),
+          )
+        : board != null
+        ? DramaFeed(
+            load: (page, force) =>
+                _saved(_ranking(catalog, board, ranks, page, force)),
           )
         : DramaFeed(
             cached: () => catalog.cached(tab),
@@ -110,6 +133,25 @@ class ExploreFeed extends ChangeNotifier {
     feed.addListener(_notify);
     unawaited(feed.reload());
     _notify();
+  }
+
+  Future<CatalogPage> _ranking(
+    SourceCatalog catalog,
+    RankingBoard board,
+    Map<String, int> ranks,
+    int page,
+    bool force,
+  ) async {
+    final result = await catalog.ranking(board, page: page, force: force);
+    for (final item in result.items) {
+      ranks[item.drama.id] = item.rank;
+    }
+    return CatalogPage(
+      [for (final item in result.items) item.drama],
+      hasMore: result.hasMore,
+      warning: result.warning,
+      page: result.page,
+    );
   }
 
   Future<CatalogPage> _saved(Future<CatalogPage> request) async {

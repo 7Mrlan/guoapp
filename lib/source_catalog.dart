@@ -1,5 +1,6 @@
 import 'core_bridge.dart';
 import 'models.dart';
+import 'ranking_models.dart';
 
 String categoryName(String name) {
   final compact = name.trim().replaceAll(RegExp(r'\s+'), '');
@@ -19,11 +20,14 @@ class SourceCatalog {
   final AppRepository repository;
   final SourceSite source;
   List<CatalogCategory> _remote = const [];
+  List<RankingBoard> _boards = const [];
   final _library = <String, Drama>{};
 
   static const recommendGenre = 'find_drama';
 
   bool get recommends => source.id == SourceSite.hongguo.id;
+
+  List<RankingBoard> get boards => _boards;
 
   List<CatalogCategory> get categories {
     final names = <String>{};
@@ -47,8 +51,20 @@ class SourceCatalog {
     try {
       remember((await repository.cached(source.id)).items);
     } catch (_) {}
+    try {
+      _boards = [
+        for (final board in await repository.rankingBoards())
+          if (board.source == source.id) board,
+      ];
+    } catch (_) {}
     _remote = await repository.categories(source.id, force: force);
   }
+
+  Future<RankingPage> ranking(
+    RankingBoard board, {
+    int page = 1,
+    bool force = false,
+  }) => repository.rankings(board.id, page: page, force: force);
 
   void remember(Iterable<Drama> items) {
     for (final drama in items) {

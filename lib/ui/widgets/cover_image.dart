@@ -38,10 +38,12 @@ class DramaCover extends StatelessWidget {
     required this.drama,
     this.radius = 12,
     this.details = true,
+    this.rank,
   });
   final Drama drama;
   final double radius;
   final bool details;
+  final int? rank;
   static const imagesDisabled = bool.fromEnvironment('DISABLE_REMOTE_IMAGES');
 
   @override
@@ -92,8 +94,49 @@ class DramaCover extends StatelessWidget {
               ),
             ),
           if (details && drama.vip)
-            const Positioned(left: 8, top: 8, child: VipBadge()),
+            Positioned(
+              left: rank == null ? 8 : null,
+              right: rank == null ? null : 8,
+              top: 8,
+              child: const VipBadge(),
+            ),
+          if (rank case final rank?)
+            Positioned(left: 0, top: 0, child: RankBadge(rank: rank)),
         ],
+      ),
+    );
+  }
+}
+
+class RankBadge extends StatelessWidget {
+  const RankBadge({super.key, required this.rank});
+  final int rank;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final top = rank <= 3;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 28),
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: !top
+            ? const Color(0x8C000000)
+            : theme.brightness == Brightness.dark
+            ? theme.colorScheme.inversePrimary
+            : theme.colorScheme.primary,
+        borderRadius: const BorderRadius.only(bottomRight: Radius.circular(10)),
+      ),
+      child: Text(
+        '$rank',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: top ? 15 : 13,
+          fontWeight: FontWeight.w800,
+          height: 1,
+        ),
       ),
     );
   }

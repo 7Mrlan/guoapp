@@ -1,6 +1,7 @@
 import 'package:duanju_app/app_build.dart';
 import 'package:duanju_app/explore_feed.dart';
 import 'package:duanju_app/local_store.dart';
+import 'package:duanju_app/ranking_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fakes.dart';
@@ -64,6 +65,38 @@ void main() {
       'hongguo|short_play||1',
       'hongguo|short_play||1!',
     ]);
+  });
+
+  test('ranking boards of this source follow all, with their ranks', () async {
+    final repository = FakeRepository()
+      ..boardList = const [
+        RankingBoard(id: 'hongguo-hot', source: 'hongguo', name: '总热播榜'),
+        RankingBoard(id: 'huangdou-all', source: 'huangdou', name: '总榜'),
+      ];
+    final explore = await _open(repository);
+    final tabs = explore.tabs;
+    expect([for (final tab in tabs) tab.name], ['推荐', '全部', '总热播榜', '真人剧']);
+    expect(explore.resume, isNull);
+
+    explore.select(tabs[2].id);
+    await pumpEventQueue();
+    expect(explore.featured, isNull);
+    expect(_titles(explore), ['hongguo-hot第1名', 'hongguo-hot第2名']);
+    await explore.feed!.loadMore();
+    expect(
+      [for (final item in explore.items) explore.rankOf(item)],
+      [1, 2, 3, 4],
+    );
+    await explore.refresh();
+    expect(repository.rankingRequests, [
+      'hongguo-hot|1',
+      'hongguo-hot|2',
+      'hongguo-hot|1!',
+    ]);
+
+    explore.select('short_play');
+    await pumpEventQueue();
+    expect(explore.rankOf(explore.items.single), isNull);
   });
 
   test('turning the source off moves on, then back when it returns', () async {
