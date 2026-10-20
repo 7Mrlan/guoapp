@@ -50,18 +50,26 @@ abstract final class AppTheme {
         thickness: 1,
       ),
     );
-    return television ? _television(theme) : theme;
+    final titled = theme.copyWith(
+      appBarTheme: theme.appBarTheme.copyWith(
+        titleTextStyle: theme.textTheme.titleLarge?.copyWith(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: scheme.onSurface,
+        ),
+      ),
+    );
+    return television ? _television(titled) : titled;
   }
 
   static ThemeData _television(ThemeData theme) {
     final colors = theme.colorScheme;
-    final focusSide = WidgetStateProperty.resolveWith<BorderSide?>(
-      (states) => states.contains(WidgetState.focused)
-          ? BorderSide(color: colors.primary, width: 3)
-          : null,
-    );
     final button = ButtonStyle(
-      side: focusSide,
+      overlayColor: WidgetStateProperty.resolveWith<Color?>(
+        (states) => states.contains(WidgetState.focused)
+            ? colors.onSurface.withValues(alpha: 0.12)
+            : null,
+      ),
       minimumSize: const WidgetStatePropertyAll(Size(52, 48)),
     );
     return theme.copyWith(

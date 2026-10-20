@@ -125,6 +125,7 @@ class _AppBootstrapState extends State<AppBootstrap>
 
   @override
   Widget build(BuildContext context) => DuanjuApp(
+    repository: repository,
     store: store,
     bootstrapError: error?.toString(),
     onRetry: _initialize,

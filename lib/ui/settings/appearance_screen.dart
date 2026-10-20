@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../local_store.dart';
 import '../../theme_color.dart';
+import '../preview/component_preview.dart';
+import '../widgets/group_card.dart';
 
 const _displayModes = {
   'auto': '自动识别设备',
@@ -33,21 +35,17 @@ class AppearanceScreen extends StatelessWidget {
       builder: (context) => SimpleDialog(
         title: const Text('界面模式'),
         children: [
-          RadioGroup<String>(
-            groupValue: store.displayMode,
-            onChanged: (value) => Navigator.pop(context, value),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final mode in _displayModes.entries)
-                  RadioListTile<String>(
-                    value: mode.key,
-                    autofocus: mode.key == store.displayMode,
-                    title: Text(mode.value),
-                  ),
-              ],
+          for (final mode in _displayModes.entries)
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+              autofocus: mode.key == store.displayMode,
+              selected: mode.key == store.displayMode,
+              title: Text(mode.value),
+              trailing: mode.key == store.displayMode
+                  ? const Icon(Icons.check_rounded)
+                  : null,
+              onTap: () => Navigator.pop(context, mode.key),
             ),
-          ),
         ],
       ),
     );
@@ -62,11 +60,23 @@ class AppearanceScreen extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final following = systemColorAvailable && store.followSystemColor;
     return Scaffold(
-      appBar: AppBar(title: const Text('外观')),
+      appBar: AppBar(
+        title: const Text('外观'),
+        actions: [
+          IconButton(
+            tooltip: '组件预览',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(builder: (_) => const ComponentPreview()),
+            ),
+            icon: const Icon(Icons.widgets_outlined),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          _Group(
+          GroupCard(
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
@@ -152,13 +162,11 @@ class AppearanceScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _Group(
+          GroupCard(
             children: [
-              ListTile(
-                contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
-                title: const Text('界面模式'),
-                subtitle: Text(_displayModes[store.displayMode]!),
-                trailing: const Icon(Icons.chevron_right_rounded),
+              SettingsTile(
+                title: '界面模式',
+                subtitle: _displayModes[store.displayMode]!,
                 onTap: () => _chooseDisplayMode(context),
               ),
             ],
@@ -167,19 +175,6 @@ class AppearanceScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Group extends StatelessWidget {
-  const _Group({required this.children});
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Theme.of(context).colorScheme.surfaceContainer,
-    borderRadius: BorderRadius.circular(20),
-    clipBehavior: Clip.antiAlias,
-    child: Column(children: children),
-  );
 }
 
 class _Swatch extends StatelessWidget {

@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../app_build.dart';
+import '../core_bridge.dart';
 import '../local_store.dart';
 import '../theme_color.dart';
+import 'app_scope.dart';
 import 'settings/appearance_screen.dart';
 import 'theme/app_theme.dart';
 import 'theme/system_color.dart';
@@ -12,11 +14,13 @@ import 'theme/system_color.dart';
 class DuanjuApp extends StatefulWidget {
   const DuanjuApp({
     super.key,
+    required this.repository,
     this.store,
     this.bootstrapError,
     this.onRetry,
     this.television = false,
   });
+  final AppRepository repository;
   final LocalStore? store;
   final String? bootstrapError;
   final VoidCallback? onRetry;
@@ -52,6 +56,27 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
     if (mounted && color != _systemColor) {
       setState(() => _systemColor = color);
     }
+  }
+
+  KeyEventResult _escape(KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        event.logicalKey != LogicalKeyboardKey.escape) {
+      return KeyEventResult.ignored;
+    }
+    final context = FocusManager.instance.primaryFocus?.context;
+    if (context == null) return KeyEventResult.ignored;
+    const intent = DismissIntent();
+    final action = Actions.maybeFind<DismissIntent>(context, intent: intent);
+    if (action != null &&
+        Actions.of(context).invokeActionIfEnabled(action, intent, context).$1) {
+      return KeyEventResult.handled;
+    }
+    final navigator = Navigator.maybeOf(context);
+    if (navigator == null || !navigator.canPop()) {
+      return KeyEventResult.ignored;
+    }
+    navigator.maybePop();
+    return KeyEventResult.handled;
   }
 
   @override
@@ -90,17 +115,26 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
       themeMode: AppTheme.mode(store?.themeMode ?? 'system'),
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
         value: AppTheme.systemBars(Theme.of(context).brightness),
-        child: Shortcuts(
-          shortcuts: const {
-            SingleActivator(LogicalKeyboardKey.select, includeRepeats: false):
-                ActivateIntent(),
-            SingleActivator(
-              LogicalKeyboardKey.gameButtonA,
-              includeRepeats: false,
-            ): ActivateIntent(),
-            SingleActivator(LogicalKeyboardKey.goBack): DismissIntent(),
-          },
-          child: FocusTraversalGroup(child: child!),
+        child: Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onKeyEvent: (_, event) => _escape(event),
+          child: Shortcuts(
+            shortcuts: const {
+              SingleActivator(LogicalKeyboardKey.select, includeRepeats: false):
+                  ActivateIntent(),
+              SingleActivator(
+                LogicalKeyboardKey.gameButtonA,
+                includeRepeats: false,
+              ): ActivateIntent(),
+              SingleActivator(LogicalKeyboardKey.goBack): DismissIntent(),
+            },
+            child: AppScope(
+              repository: widget.repository,
+              television: television,
+              child: FocusTraversalGroup(child: child!),
+            ),
+          ),
         ),
       ),
       home: switch (store) {
