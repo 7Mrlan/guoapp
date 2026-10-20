@@ -193,7 +193,7 @@ func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, pat
 			prepared.URL.RawQuery = query.Encode()
 			if comment {
 				signHongguoCommentRequest(prepared, commentNonce, now)
-			} else {
+			} else if path != hongguoBookmallTabPath {
 				signHongguoPlayerRequest(prepared, body, now, installID)
 			}
 		})
@@ -218,7 +218,11 @@ func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, pat
 			}
 			continue
 		}
-		if len(content) == 0 || len(content) > providerMaxBodyBytes {
+		if len(content) == 0 {
+			lastErr = errors.New("红果 App 接口未返回有效数据")
+			continue
+		}
+		if len(content) > providerMaxBodyBytes {
 			return nil, errors.New("红果 App 接口未返回有效数据")
 		}
 		var result map[string]any

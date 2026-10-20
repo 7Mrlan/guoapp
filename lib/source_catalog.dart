@@ -21,7 +21,7 @@ class SourceCatalog {
   List<CatalogCategory> _remote = const [];
   final _library = <String, Drama>{};
 
-  static const recommendGenre = 'home_feed';
+  static const recommendGenre = 'find_drama';
 
   bool get recommends => source.id == SourceSite.hongguo.id;
 
