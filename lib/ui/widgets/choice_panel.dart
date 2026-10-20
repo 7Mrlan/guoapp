@@ -194,7 +194,7 @@ class _ChoicePanel<T> extends StatelessWidget {
               ),
               child: GridView.builder(
                 shrinkWrap: true,
-                padding: const EdgeInsets.all(6),
+                padding: EdgeInsets.all(television ? 12 : 6),
                 itemCount: options.length,
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,

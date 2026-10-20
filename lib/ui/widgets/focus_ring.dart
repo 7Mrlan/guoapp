@@ -14,37 +14,86 @@ typedef _Outline = ({
   Color color,
 });
 
-final _shownOutline = ValueNotifier<_Outline?>(null);
 final _outlineLayout = ValueNotifier<Size>(Size.zero);
 
-class FocusOutlineLayer extends StatelessWidget {
+void revealFocus(
+  FocusNode node, {
+  ScrollPositionAlignmentPolicy? alignmentPolicy,
+  double? alignment,
+  Duration? duration,
+  Curve? curve,
+}) {
+  node.requestFocus();
+  final box = node.context?.findRenderObject();
+  if (box is RenderBox && box.hasSize) {
+    box.showOnScreen(rect: (Offset.zero & box.size).inflate(16));
+  }
+}
+
+class FocusOutlineScrollBehavior extends MaterialScrollBehavior {
+  const FocusOutlineScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    final indicator = super.buildOverscrollIndicator(context, child, details);
+    return axisDirectionToAxis(details.direction) == Axis.vertical
+        ? FocusOutlineLayer(child: indicator)
+        : indicator;
+  }
+}
+
+class _OutlineScope extends InheritedWidget {
+  const _OutlineScope({required this.shown, required super.child});
+  final ValueNotifier<_Outline?> shown;
+
+  @override
+  bool updateShouldNotify(_OutlineScope oldWidget) => shown != oldWidget.shown;
+}
+
+class FocusOutlineLayer extends StatefulWidget {
   const FocusOutlineLayer({super.key, required this.child});
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Stack(
-    alignment: Alignment.topLeft,
-    fit: StackFit.passthrough,
-    children: [
-      child,
-      ValueListenableBuilder(
-        valueListenable: _shownOutline,
-        builder: (context, outline, _) => switch (outline) {
-          final outline? => Positioned(
-            left: 0,
-            top: 0,
-            child: IgnorePointer(
-              child: CompositedTransformFollower(
-                link: outline.link,
-                showWhenUnlinked: false,
-                child: CustomPaint(painter: _OutlinePainter(outline)),
+  State<FocusOutlineLayer> createState() => _FocusOutlineLayerState();
+}
+
+class _FocusOutlineLayerState extends State<FocusOutlineLayer> {
+  final _shown = ValueNotifier<_Outline?>(null);
+
+  @override
+  Widget build(BuildContext context) => _OutlineScope(
+    shown: _shown,
+    child: ClipRect(
+      child: Stack(
+        alignment: Alignment.topLeft,
+        fit: StackFit.passthrough,
+        children: [
+          widget.child,
+          ValueListenableBuilder(
+            valueListenable: _shown,
+            builder: (context, outline, _) => switch (outline) {
+              final outline? => Positioned(
+                left: 0,
+                top: 0,
+                child: IgnorePointer(
+                  child: CompositedTransformFollower(
+                    link: outline.link,
+                    showWhenUnlinked: false,
+                    child: CustomPaint(painter: _OutlinePainter(outline)),
+                  ),
+                ),
               ),
-            ),
+              null => const SizedBox.shrink(),
+            },
           ),
-          null => const SizedBox.shrink(),
-        },
+        ],
       ),
-    ],
+    ),
   );
 }
 
@@ -110,6 +159,13 @@ class _FocusOutlineState extends State<FocusOutline> {
   final _link = LayerLink();
   final _child = GlobalKey();
   _Outline? _outline;
+  ValueNotifier<_Outline?>? _shown;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _shown = context.dependOnInheritedWidgetOfExactType<_OutlineScope>()?.shown;
+  }
 
   @override
   void dispose() {
@@ -118,13 +174,17 @@ class _FocusOutlineState extends State<FocusOutline> {
     super.dispose();
   }
 
-  void _publish() => WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (_outline case final outline? when mounted) {
-      _shownOutline.value = outline;
-    } else if (_shownOutline.value?.link == _link) {
-      _shownOutline.value = null;
-    }
-  });
+  void _publish() {
+    final shown = _shown;
+    if (shown == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_outline case final outline? when mounted) {
+        shown.value = outline;
+      } else if (shown.value?.link == _link) {
+        shown.value = null;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -109,6 +109,7 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: appName,
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const FocusOutlineScrollBehavior(),
       locale: const Locale('zh', 'CN'),
       supportedLocales: const [Locale('zh', 'CN')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -144,7 +145,12 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
                   },
               systemColorAvailable: _systemColor != null,
               child: FocusOutlineLayer(
-                child: FocusTraversalGroup(child: child!),
+                child: FocusTraversalGroup(
+                  policy: ReadingOrderTraversalPolicy(
+                    requestFocusCallback: revealFocus,
+                  ),
+                  child: child!,
+                ),
               ),
             ),
           ),

@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../drama_feed.dart';
+import '../../models.dart';
 import '../app_scope.dart';
 import 'drama_tile.dart';
 import 'focus_ring.dart';
@@ -37,6 +39,60 @@ SliverGridDelegate dramaGridDelegate(BuildContext context, double width) {
     mainAxisSpacing: runSpacing,
     mainAxisExtent: DramaTile.extentFor(context, tile),
   );
+}
+
+class DramaSliverGrid extends StatelessWidget {
+  const DramaSliverGrid({
+    super.key,
+    required this.width,
+    required this.items,
+    required this.onOpen,
+    this.autofocus = false,
+  });
+  final double width;
+  final List<Drama> items;
+  final ValueChanged<Drama> onOpen;
+  final bool autofocus;
+
+  KeyEventResult _wrapRow(int index, int columns, KeyEvent event) {
+    if (event is KeyUpEvent) return KeyEventResult.ignored;
+    final primary = FocusManager.instance.primaryFocus;
+    final last = items.length - 1;
+    switch (event.logicalKey) {
+      case LogicalKeyboardKey.arrowRight
+          when index % columns == columns - 1 || index == last:
+        if (index < last) primary?.nextFocus();
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowLeft when index % columns == 0 && index > 0:
+        primary?.previousFocus();
+        return KeyEventResult.handled;
+      default:
+        return KeyEventResult.ignored;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (columns, _, _) = _gridLayout(context, width);
+    return SliverGrid.builder(
+      gridDelegate: dramaGridDelegate(context, width),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final drama = items[index];
+        return Focus(
+          key: ValueKey(drama.id),
+          canRequestFocus: false,
+          skipTraversal: true,
+          onKeyEvent: (_, event) => _wrapRow(index, columns, event),
+          child: DramaTile(
+            drama: drama,
+            autofocus: autofocus && index == 0,
+            onTap: () => onOpen(drama),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class AutoLoadMore extends StatelessWidget {

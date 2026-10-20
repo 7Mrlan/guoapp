@@ -10,7 +10,6 @@ import '../widgets/bar_button.dart';
 import '../widgets/category_tabs.dart';
 import '../widgets/choice_panel.dart';
 import '../widgets/drama_grid.dart';
-import '../widgets/drama_tile.dart';
 import '../widgets/page_header.dart';
 import '../widgets/source_bar.dart';
 import '../widgets/status_view.dart';
@@ -114,6 +113,19 @@ class ExplorePageState extends State<ExplorePage> {
         FormFactor.wide => 24.0,
         FormFactor.television => televisionInset,
       };
+      final tabs = Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: form == FormFactor.phone ? 0 : inset,
+        ),
+        child: CategoryTabs<String>(
+          options: [
+            for (final tab in explore.tabs) ChoiceOption(tab.id, tab.name),
+          ],
+          selected: explore.tab.id,
+          onSelected: explore.select,
+          onShowAll: _pickCategory,
+        ),
+      );
       return Scaffold(
         body: SafeArea(
           bottom: false,
@@ -135,21 +147,8 @@ class ExplorePageState extends State<ExplorePage> {
                       ),
                   ],
                 ),
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: form == FormFactor.phone ? 0 : inset,
-                ),
-                child: CategoryTabs<String>(
-                  options: [
-                    for (final tab in explore.tabs)
-                      ChoiceOption(tab.id, tab.name),
-                  ],
-                  selected: explore.tab.id,
-                  onSelected: explore.select,
-                  onShowAll: _pickCategory,
-                ),
-              ),
-              Expanded(child: _content(explore, inset, television)),
+              if (!television || explore.feed!.items.isEmpty) tabs,
+              Expanded(child: _content(explore, inset, television, tabs)),
             ],
           ),
         ),
@@ -157,7 +156,12 @@ class ExplorePageState extends State<ExplorePage> {
     },
   );
 
-  Widget _content(ExploreFeed explore, double inset, bool television) {
+  Widget _content(
+    ExploreFeed explore,
+    double inset,
+    bool television,
+    Widget tabs,
+  ) {
     final feed = explore.feed!;
     final hero = _hero(explore);
     final items = explore.items;
@@ -188,6 +192,11 @@ class ExplorePageState extends State<ExplorePage> {
           controller: _scroll,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
+            if (television)
+              SliverPadding(
+                padding: const EdgeInsets.only(top: 8),
+                sliver: SliverToBoxAdapter(child: tabs),
+              ),
             if (hero != null)
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(inset, phone ? 12 : 16, inset, 0),
@@ -195,18 +204,11 @@ class ExplorePageState extends State<ExplorePage> {
               ),
             SliverPadding(
               padding: EdgeInsets.fromLTRB(inset, desktop ? 20 : 16, inset, 0),
-              sliver: SliverGrid.builder(
-                gridDelegate: dramaGridDelegate(
-                  context,
-                  constraints.maxWidth - inset * 2,
-                ),
-                itemCount: items.length,
-                itemBuilder: (context, index) => DramaTile(
-                  key: ValueKey(items[index].id),
-                  drama: items[index],
-                  autofocus: television && hero == null && index == 0,
-                  onTap: () => _open(items[index]),
-                ),
+              sliver: DramaSliverGrid(
+                width: constraints.maxWidth - inset * 2,
+                items: items,
+                autofocus: television && hero == null,
+                onOpen: _open,
               ),
             ),
             SliverPadding(

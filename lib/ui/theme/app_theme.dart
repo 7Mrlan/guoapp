@@ -82,6 +82,7 @@ abstract final class AppTheme {
       minimumSize: const WidgetStatePropertyAll(Size(52, 48)),
     );
     return theme.copyWith(
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       focusColor: colors.primary.withValues(alpha: 0.16),
       iconButtonTheme: IconButtonThemeData(style: button),
       filledButtonTheme: FilledButtonThemeData(style: button),

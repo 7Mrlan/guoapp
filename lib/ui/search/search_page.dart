@@ -11,7 +11,6 @@ import '../app_scope.dart';
 import '../shell/app_shell.dart';
 import '../shell/pending_pages.dart';
 import '../widgets/drama_grid.dart';
-import '../widgets/drama_tile.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/search_field.dart';
 import '../widgets/status_view.dart';
@@ -170,22 +169,17 @@ class _SearchPageState extends State<SearchPage> {
         child: CustomScrollView(
           slivers: [
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(inset, 8, inset, 0),
-              sliver: SliverGrid.builder(
-                gridDelegate: dramaGridDelegate(
-                  context,
-                  constraints.maxWidth - inset * 2,
-                ),
-                itemCount: results.items.length,
-                itemBuilder: (context, index) {
-                  final drama = results.items[index];
-                  return DramaTile(
-                    key: ValueKey(drama.id),
-                    drama: drama,
-                    autofocus: television && index == 0,
-                    onTap: () => _open(drama),
-                  );
-                },
+              padding: EdgeInsets.fromLTRB(
+                inset,
+                television ? 16 : 8,
+                inset,
+                0,
+              ),
+              sliver: DramaSliverGrid(
+                width: constraints.maxWidth - inset * 2,
+                items: results.items,
+                autofocus: television,
+                onOpen: _open,
               ),
             ),
             SliverPadding(
