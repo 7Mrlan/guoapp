@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../download_overview.dart';
 import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
 import '../explore/explore_page.dart';
 import '../explore/source_actions.dart';
+import '../mine/mine_page.dart';
 import '../widgets/bar_button.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/source_bar.dart';
@@ -40,18 +43,31 @@ class _AppShellState extends State<AppShell> {
     for (final _ in AppTab.values) GlobalKey<NavigatorState>(),
   ];
   final _tabFocus = [for (final _ in AppTab.values) FocusNode()];
+  final _mineEntry = FocusNode();
   final _televisionTabs = GlobalKey();
   final _explore = GlobalKey<ExplorePageState>();
   var _tab = AppTab.explore;
   var _headerFocused = false;
+  DownloadOverview? _downloads;
 
   NavigatorState? get _navigator => _navigators[_tab.index].currentState;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _downloads ??= DownloadOverview(
+      AppScope.of(context).repository,
+      widget.store,
+    );
+  }
 
   @override
   void dispose() {
     for (final node in _tabFocus) {
       node.dispose();
     }
+    _mineEntry.dispose();
+    _downloads?.dispose();
     super.dispose();
   }
 
@@ -70,7 +86,12 @@ class _AppShellState extends State<AppShell> {
 
   Widget _root(AppTab tab) => switch (tab) {
     AppTab.explore => ExplorePage(key: _explore, store: widget.store),
-    AppTab.mine => PendingMinePage(store: widget.store),
+    AppTab.mine => MinePage(
+      store: widget.store,
+      downloads: _downloads!,
+      entryFocus: _mineEntry,
+      onExitUp: _tabFocus[AppTab.mine.index].requestFocus,
+    ),
     _ => PendingTabPage(label: tab.label, icon: tab.icon),
   };
 
@@ -118,8 +139,8 @@ class _AppShellState extends State<AppShell> {
                     for (final tab in AppTab.values)
                       NavigationDestination(
                         key: ValueKey('nav-${tab.name}'),
-                        icon: Icon(tab.icon),
-                        selectedIcon: Icon(tab.selectedIcon),
+                        icon: _badged(tab, Icon(tab.icon)),
+                        selectedIcon: _badged(tab, Icon(tab.selectedIcon)),
                         label: tab.label,
                       ),
                   ],
@@ -143,6 +164,16 @@ class _AppShellState extends State<AppShell> {
                       skipTraversal: true,
                       onFocusChange: (focused) =>
                           setState(() => _headerFocused = focused),
+                      onKeyEvent: (_, event) {
+                        if (event is KeyUpEvent ||
+                            event.logicalKey != LogicalKeyboardKey.arrowDown ||
+                            _tab != AppTab.mine ||
+                            _mineEntry.context == null) {
+                          return KeyEventResult.ignored;
+                        }
+                        revealFocus(_mineEntry);
+                        return KeyEventResult.handled;
+                      },
                       child: _televisionHeader(),
                     ),
                   ),
@@ -154,6 +185,10 @@ class _AppShellState extends State<AppShell> {
       },
     );
   }
+
+  Widget _badged(AppTab tab, Widget icon) => tab == AppTab.mine
+      ? _DownloadBadge(downloads: _downloads!, child: icon)
+      : icon;
 
   Widget _televisionHeader() {
     final tabs = Row(
@@ -193,6 +228,7 @@ class _AppShellState extends State<AppShell> {
           _SideBar(
             selected: _tab,
             expanded: expanded,
+            badged: _badged,
             onSelect: _select,
             onToggle: roomy
                 ? () => widget.store.setSideBarExpanded(!expanded)
@@ -252,11 +288,13 @@ class _SideBar extends StatelessWidget {
   const _SideBar({
     required this.selected,
     required this.expanded,
+    required this.badged,
     required this.onSelect,
     this.onToggle,
   });
   final AppTab selected;
   final bool expanded;
+  final Widget Function(AppTab tab, Widget icon) badged;
   final ValueChanged<AppTab> onSelect;
   final VoidCallback? onToggle;
 
@@ -309,6 +347,7 @@ class _SideBar extends StatelessWidget {
                     selected: tab == selected,
                     expanded: expanded,
                     metrics: metrics,
+                    badged: badged,
                     onTap: () => onSelect(tab),
                   ),
               ],
@@ -326,12 +365,14 @@ class _SideItem extends StatelessWidget {
     required this.selected,
     required this.expanded,
     required this.metrics,
+    required this.badged,
     required this.onTap,
   });
   final AppTab tab;
   final bool selected;
   final bool expanded;
   final _SideMetrics metrics;
+  final Widget Function(AppTab tab, Widget icon) badged;
   final VoidCallback onTap;
 
   @override
@@ -341,10 +382,13 @@ class _SideItem extends StatelessWidget {
     final color = selected
         ? colors.onSecondaryContainer
         : colors.onSurfaceVariant;
-    final icon = Icon(
-      selected ? tab.selectedIcon : tab.icon,
-      color: color,
-      size: metrics.iconSize,
+    final icon = badged(
+      tab,
+      Icon(
+        selected ? tab.selectedIcon : tab.icon,
+        color: color,
+        size: metrics.iconSize,
+      ),
     );
     final item = Material(
       color: selected ? colors.secondaryContainer : Colors.transparent,
@@ -391,6 +435,26 @@ class _SideItem extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DownloadBadge extends StatelessWidget {
+  const _DownloadBadge({required this.downloads, required this.child});
+  final DownloadOverview downloads;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: downloads,
+    builder: (context, child) {
+      final count = downloads.active;
+      return Badge(
+        isLabelVisible: count > 0,
+        label: Text(count > 99 ? '99+' : '$count'),
+        child: child,
+      );
+    },
+    child: child,
+  );
 }
 
 class _TelevisionTab extends StatelessWidget {

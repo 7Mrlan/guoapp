@@ -80,50 +80,37 @@ class PendingDetailPage extends StatelessWidget {
   );
 }
 
-class PendingMinePage extends StatelessWidget {
-  const PendingMinePage({super.key, required this.store});
+class PendingSettingsPage extends StatelessWidget {
+  const PendingSettingsPage({super.key, required this.store});
   final LocalStore store;
 
   @override
-  Widget build(BuildContext context) {
-    final television = AppScope.of(context).television;
-    final inset = television ? televisionInset : 16.0;
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: Column(
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('设置')),
+    body: ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: [
+        GroupCard(
           children: [
-            if (!television) const PageHeader(title: '我的'),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(inset, 8, inset, 24),
-                children: [
-                  GroupCard(
-                    children: [
-                      SettingsTile(
-                        icon: Icons.palette_outlined,
-                        title: '外观',
-                        onTap: () => openPage<void>(
-                          context,
-                          (_) => ListenableBuilder(
-                            listenable: store,
-                            builder: (context, _) => AppearanceScreen(
-                              store: store,
-                              systemColorAvailable: AppScope.of(
-                                context,
-                              ).systemColorAvailable,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+            SettingsTile(
+              icon: Icons.palette_outlined,
+              title: '外观',
+              onTap: () => openPage<void>(
+                context,
+                (_) => ListenableBuilder(
+                  listenable: store,
+                  builder: (context, _) => AppearanceScreen(
+                    store: store,
+                    systemColorAvailable: AppScope.of(
+                      context,
+                    ).systemColorAvailable,
                   ),
-                ],
+                ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
 }

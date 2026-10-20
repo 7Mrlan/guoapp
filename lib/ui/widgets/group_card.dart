@@ -85,14 +85,16 @@ class SectionHeader extends StatelessWidget {
     required this.title,
     this.action,
     this.onAction,
+    this.padding = const EdgeInsets.fromLTRB(20, 12, 8, 0),
   });
   final String title;
   final String? action;
   final VoidCallback? onAction;
+  final EdgeInsets padding;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
+    padding: padding,
     child: SizedBox(
       height: 40,
       child: Row(

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:duanju_app/core_bridge.dart';
+import 'package:duanju_app/local_profiles.dart';
 import 'package:duanju_app/local_store.dart';
 import 'package:duanju_app/models.dart';
 import 'package:duanju_app/ranking_models.dart';
@@ -28,12 +31,46 @@ WatchEntry watching(Drama drama, {int episode = 1, double position = 10}) =>
       updatedAt: DateTime(2026, 10, 20),
     );
 
+final viewerPreferences = <String, Object>{
+  'profiles': jsonEncode([
+    LocalProfile(
+      id: 'default',
+      name: '管理员',
+      admin: true,
+      salt: '0' * 32,
+      pinHash: '1' * 64,
+    ).toJson(),
+    const LocalProfile(
+      id: 'viewer',
+      name: '访客',
+      sources: ['hongguo'],
+      download: false,
+    ).toJson(),
+  ]),
+  'activeProfile': 'viewer',
+};
+
 Future<LocalStore> openStore([Map<String, Object> initial = const {}]) async {
   SharedPreferences.setMockInitialValues(Map.of(initial));
   final store = LocalStore(await SharedPreferences.getInstance());
   addTearDown(store.dispose);
   return store;
 }
+
+DownloadJob downloadJob(
+  Drama drama,
+  int episode, {
+  String state = 'completed',
+  double progress = 1,
+  int bytes = 0,
+}) => DownloadJob(
+  id: '${drama.id}:$episode',
+  drama: drama,
+  episode: Episode(const {}, episode),
+  state: state,
+  progress: progress,
+  bytes: bytes,
+);
 
 LocalStore restartStore(LocalStore store) {
   final restarted = LocalStore(store.preferences);
@@ -58,6 +95,17 @@ class FakeRepository extends AppRepository {
   final rankingRequests = <String>[];
   final recommendRequests = <({bool more, bool force})>[];
   String failure = '';
+  List<DownloadJob>? jobs;
+  int downloadRequests = 0;
+
+  @override
+  bool get supportsDownloads => jobs != null;
+
+  @override
+  Future<List<DownloadJob>> downloads() async {
+    downloadRequests++;
+    return jobs ?? const [];
+  }
 
   CatalogPage pageFor(String source, String category, String query, int page) =>
       CatalogPage([

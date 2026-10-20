@@ -178,15 +178,27 @@ class ProgressPoster extends StatelessWidget {
     required this.progress,
     required this.caption,
     required this.onTap,
+    this.tag,
     this.onMore,
+    this.focusNode,
     this.width = 100,
   });
   final Drama drama;
   final double progress;
   final String caption;
+  final String? tag;
   final VoidCallback onTap;
   final VoidCallback? onMore;
+  final FocusNode? focusNode;
   final double width;
+
+  static double extentFor(BuildContext context, double width) {
+    final scaler = MediaQuery.textScalerOf(context);
+    final television = AppScope.of(context).television;
+    final title = scaler.scale(television ? 15 : 14) * 1.3;
+    final caption = scaler.scale(television ? 13 : 12) * 1.3;
+    return (width * 1.5 + 8 + title + 2 + caption).ceilToDouble();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -199,15 +211,55 @@ class ProgressPoster extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             DramaCover(drama: drama, radius: _coverRadius, details: false),
+            if (tag case final tag?)
+              Positioned(
+                left: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    tag,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ),
+            if (television)
+              const IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(_coverRadius),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [.55, 1],
+                      colors: [Colors.transparent, Color(0xB3000000)],
+                    ),
+                  ),
+                ),
+              ),
             Positioned(
-              left: _coverRadius,
-              right: _coverRadius,
-              bottom: 0,
+              left: television ? 8 : _coverRadius,
+              right: television ? 8 : _coverRadius,
+              bottom: television ? 8 : 0,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(1.5),
+                borderRadius: BorderRadius.circular(television ? 2 : 1.5),
                 child: LinearProgressIndicator(
                   value: progress.clamp(0.0, 1.0),
-                  minHeight: 3,
+                  minHeight: television ? 4 : 3,
                   color: colors.primaryFixedDim,
                   backgroundColor: Colors.white.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.zero,
@@ -217,9 +269,10 @@ class ProgressPoster extends StatelessWidget {
             ),
           ],
         ),
-        label: '${drama.title}，$caption',
+        label: '${drama.title}，${tag == null ? '' : '$tag，'}$caption',
         onTap: onTap,
         onMore: onMore,
+        focusNode: focusNode,
         caption: [
           const SizedBox(height: 8),
           _line(

@@ -15,12 +15,13 @@ Future<LocalStore> pumpApp(
   Size size = phoneSize,
   String mode = 'standard',
   AppRepository? repository,
+  Map<String, Object> initial = const {},
   Future<void> Function(LocalStore store)? prepare,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  final store = await openStore();
+  final store = await openStore(initial);
   await store.setDisplayMode(mode);
   await prepare?.call(store);
   await tester.pumpWidget(
@@ -42,8 +43,14 @@ Future<void> openTab(WidgetTester tester, String tab) async {
   await settle(tester);
 }
 
-Future<void> openAppearance(WidgetTester tester) async {
+Future<void> openSettings(WidgetTester tester) async {
   await openTab(tester, 'mine');
+  await tester.tap(find.text('设置'));
+  await settle(tester);
+}
+
+Future<void> openAppearance(WidgetTester tester) async {
+  await openSettings(tester);
   await tester.tap(find.text('外观'));
   await settle(tester);
 }

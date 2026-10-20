@@ -1,7 +1,6 @@
 import 'package:duanju_app/ui/explore/explore_page.dart';
 import 'package:duanju_app/ui/settings/appearance_screen.dart';
 import 'package:duanju_app/ui/widgets/focus_ring.dart';
-import 'package:duanju_app/ui/widgets/group_card.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,6 +23,9 @@ void main() {
 
       expect(await systemBack(tester), isTrue);
       expect(find.byType(AppearanceScreen), findsNothing);
+      expect(find.byType(NavigationBar), findsNothing);
+
+      expect(await systemBack(tester), isTrue);
       expect(find.byType(NavigationBar), findsOneWidget);
 
       expect(await systemBack(tester), isTrue);
@@ -126,6 +128,9 @@ void main() {
 
         await systemBack(tester);
         expect(find.byType(AppearanceScreen), findsNothing);
+        expect(navItem('explore'), findsNothing);
+
+        await systemBack(tester);
         expect(navItem('explore'), findsOneWidget);
       });
     }
@@ -180,13 +185,13 @@ void main() {
       tabFocus(tester, 'mine').requestFocus();
       await settle(tester);
       expect(
-        tester.getTopLeft(find.byType(GroupCard)).dx,
+        tester.getTopLeft(find.text('最近观看')).dx,
         tester.getTopLeft(navItem('explore')).dx,
       );
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await settle(tester);
-      expect(focusHolds(tester, find.text('外观')), isTrue);
+      expect(focusHolds(tester, find.text('管理员')), isTrue);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await settle(tester);
