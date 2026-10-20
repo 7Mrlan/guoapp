@@ -1,6 +1,8 @@
 import 'package:duanju_app/local_store.dart';
 import 'package:duanju_app/ui/app.dart';
+import 'package:duanju_app/ui/explore/explore_page.dart';
 import 'package:duanju_app/ui/settings/appearance_screen.dart';
+import 'package:duanju_app/ui/widgets/focus_ring.dart';
 import 'package:duanju_app/ui/widgets/group_card.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -61,10 +63,10 @@ void main() {
 
     await _back(tester);
     expect(find.byType(AppearanceScreen), findsNothing);
-    expect(find.text('组件预览'), findsOneWidget);
+    expect(find.text('外观'), findsOneWidget);
 
     await _back(tester);
-    expect(find.text('「发现」正在重建'), findsOneWidget);
+    expect(find.byType(ExplorePage), findsOneWidget);
     store.dispose();
   });
 
@@ -87,7 +89,7 @@ void main() {
 
     await _back(tester);
     expect(find.byType(AppearanceScreen), findsNothing);
-    expect(find.text('组件预览'), findsOneWidget);
+    expect(find.text('外观'), findsOneWidget);
     store.dispose();
   });
 
@@ -190,15 +192,82 @@ void main() {
     store.dispose();
   });
 
+  for (final mode in ['television', 'phone']) {
+    testWidgets('a wide page left open covers the $mode navigation', (
+      tester,
+    ) async {
+      final store = await _open(tester, const Size(1280, 800));
+      await _tab(tester, 'mine');
+      await tester.tap(find.text('外观'));
+      await _settle(tester);
+
+      if (mode == 'television') {
+        await store.setDisplayMode('television');
+      } else {
+        tester.view.physicalSize = const Size(390, 844);
+      }
+      await _settle(tester);
+      expect(find.byType(AppearanceScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav-explore')), findsNothing);
+
+      await _back(tester);
+      expect(find.byType(AppearanceScreen), findsNothing);
+      expect(find.byKey(const ValueKey('nav-explore')), findsOneWidget);
+      store.dispose();
+    });
+  }
+
+  testWidgets('television tabs keep focus when selected', (tester) async {
+    final store = await _open(tester, const Size(960, 540), mode: 'television');
+    bool focused(String name) => tester
+        .widget<InkWell>(find.byKey(ValueKey('nav-$name')))
+        .focusNode!
+        .hasPrimaryFocus;
+    tester
+        .widget<InkWell>(find.byKey(const ValueKey('nav-explore')))
+        .focusNode!
+        .requestFocus();
+    await _settle(tester);
+    for (final name in ['rank', 'explore', 'mine', 'follow']) {
+      final from = _tabs.indexWhere(focused);
+      final key = _tabs.indexOf(name) > from
+          ? LogicalKeyboardKey.arrowRight
+          : LogicalKeyboardKey.arrowLeft;
+      for (var i = 0; i < (_tabs.indexOf(name) - from).abs(); i++) {
+        await tester.sendKeyEvent(key);
+        await _settle(tester);
+      }
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await _settle(tester);
+      expect(focused(name), isTrue, reason: name);
+      final ring = find.ancestor(
+        of: find.byKey(ValueKey('nav-$name')),
+        matching: find.byType(FocusOutline),
+      );
+      expect(tester.widget<FocusOutline>(ring).visible, isTrue, reason: name);
+      expect(
+        tester.getTopLeft(
+          find.descendant(
+            of: find.byType(CompositedTransformFollower),
+            matching: find.byType(CustomPaint),
+          ),
+        ),
+        offsetMoreOrLessEquals(tester.getTopLeft(ring), epsilon: 0.5),
+        reason: name,
+      );
+    }
+    store.dispose();
+  });
+
   testWidgets('television back returns to explore and focuses its tab', (
     tester,
   ) async {
     final store = await _open(tester, const Size(960, 540), mode: 'television');
     await _tab(tester, 'mine');
-    expect(find.text('组件预览'), findsOneWidget);
+    expect(find.text('外观'), findsOneWidget);
 
     await _back(tester);
-    expect(find.text('「发现」正在重建'), findsOneWidget);
+    expect(find.byType(ExplorePage), findsOneWidget);
     final explore = tester.widget<InkWell>(
       find.byKey(const ValueKey('nav-explore')),
     );

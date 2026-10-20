@@ -6,10 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'fixtures.dart';
 
-Widget _tabs(int count, {ValueChanged<String>? onSelected}) => MaterialApp(
+Widget _tabs(
+  int count, {
+  ValueChanged<String>? onSelected,
+  bool television = false,
+}) => MaterialApp(
   home: AppScope(
     repository: FixtureRepository(),
-    television: false,
+    television: television,
     child: Scaffold(
       body: SizedBox(
         width: 390,
@@ -38,6 +42,19 @@ void main() {
     await tester.pumpWidget(_tabs(24));
     await tester.pump();
     expect(find.byTooltip('全部分类'), findsOneWidget);
+    expect(
+      tester.getCenter(find.byTooltip('全部分类')).dx,
+      greaterThan(tester.getCenter(find.text('分类0')).dx),
+    );
+  });
+
+  testWidgets('television puts all categories before the tabs', (tester) async {
+    await tester.pumpWidget(_tabs(24, television: true));
+    await tester.pump();
+    expect(
+      tester.getCenter(find.byTooltip('全部分类')).dx,
+      lessThan(tester.getCenter(find.text('分类0')).dx),
+    );
   });
 
   testWidgets('tapping a tab reports its value', (tester) async {

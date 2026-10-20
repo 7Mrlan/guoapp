@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../local_store.dart';
+import '../../models.dart';
 import '../app_scope.dart';
-import '../preview/component_preview.dart';
 import '../settings/appearance_screen.dart';
+import '../widgets/cover_image.dart';
 import '../widgets/group_card.dart';
 import '../widgets/page_header.dart';
 import '../widgets/status_view.dart';
@@ -25,6 +26,55 @@ class PendingTabPage extends StatelessWidget {
             child: StatusView(title: '「$label」正在重建', icon: icon),
           ),
         ],
+      ),
+    ),
+  );
+}
+
+class PendingPage extends StatelessWidget {
+  const PendingPage({super.key, required this.title, required this.icon});
+  final String title;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title)),
+    body: StatusView(title: '「$title」正在重建', icon: icon),
+  );
+}
+
+class PendingDetailPage extends StatelessWidget {
+  const PendingDetailPage({super.key, required this.drama});
+  final Drama drama;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(drama.title)),
+    body: Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 16,
+          children: [
+            SizedBox(
+              width: 120,
+              height: 180,
+              child: DramaCover(drama: drama, details: false),
+            ),
+            Text(
+              drama.title,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            Text(
+              '「详情」正在重建',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -64,15 +114,6 @@ class PendingMinePage extends StatelessWidget {
                               ).systemColorAvailable,
                             ),
                           ),
-                        ),
-                      ),
-                      SettingsTile(
-                        icon: Icons.widgets_outlined,
-                        title: '组件预览',
-                        subtitle: '临时页面，使用假数据',
-                        onTap: () => openPage<void>(
-                          context,
-                          (_) => const ComponentPreview(),
                         ),
                       ),
                     ],

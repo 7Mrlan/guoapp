@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../local_store.dart';
+import '../../models.dart';
 import '../app_scope.dart';
+import '../explore/explore_page.dart';
+import '../explore/source_actions.dart';
 import '../widgets/bar_button.dart';
 import '../widgets/focus_ring.dart';
+import '../widgets/source_bar.dart';
 import 'pending_pages.dart';
 
 enum AppTab {
@@ -37,7 +41,10 @@ class _AppShellState extends State<AppShell> {
     for (final _ in AppTab.values) GlobalKey<NavigatorState>(),
   ];
   final _tabFocus = [for (final _ in AppTab.values) FocusNode()];
+  final _televisionTabs = GlobalKey();
+  final _explore = GlobalKey<ExplorePageState>();
   var _tab = AppTab.explore;
+  var _headerFocused = false;
 
   NavigatorState? get _navigator => _navigators[_tab.index].currentState;
 
@@ -57,11 +64,13 @@ class _AppShellState extends State<AppShell> {
       navigator.pop();
       return;
     }
+    if (_tab == AppTab.explore) _explore.currentState?.refresh();
     _select(AppTab.explore);
     if (AppScope.of(context).television) _tabFocus.first.requestFocus();
   }
 
   Widget _root(AppTab tab) => switch (tab) {
+    AppTab.explore => ExplorePage(key: _explore, store: widget.store),
     AppTab.mine => PendingMinePage(store: widget.store),
     _ => PendingTabPage(label: tab.label, icon: tab.icon),
   };
@@ -70,9 +79,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final pages = NotificationListener<NavigationNotification>(
       onNotification: (_) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) setState(() {});
-        });
+        setState(() {});
         return false;
       },
       child: IndexedStack(
@@ -91,59 +98,90 @@ class _AppShellState extends State<AppShell> {
         ],
       ),
     );
+    final television = AppScope.of(context).television;
+    final covered = _navigator?.canPop() ?? false;
     return PopScope(
-      canPop: _tab == AppTab.explore && !(_navigator?.canPop() ?? false),
+      canPop:
+          _tab == AppTab.explore && !covered && (!television || _headerFocused),
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _back();
       },
       child: switch (AppScope.formFactorOf(context)) {
         FormFactor.phone => Scaffold(
           body: pages,
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _tab.index,
-            onDestinationSelected: (index) => _select(AppTab.values[index]),
-            destinations: [
-              for (final tab in AppTab.values)
-                NavigationDestination(
-                  key: ValueKey('nav-${tab.name}'),
-                  icon: Icon(tab.icon),
-                  selectedIcon: Icon(tab.selectedIcon),
-                  label: tab.label,
+          bottomNavigationBar: covered
+              ? null
+              : NavigationBar(
+                  selectedIndex: _tab.index,
+                  onDestinationSelected: (index) =>
+                      _select(AppTab.values[index]),
+                  destinations: [
+                    for (final tab in AppTab.values)
+                      NavigationDestination(
+                        key: ValueKey('nav-${tab.name}'),
+                        icon: Icon(tab.icon),
+                        selectedIcon: Icon(tab.selectedIcon),
+                        label: tab.label,
+                      ),
+                  ],
                 ),
-            ],
-          ),
         ),
         FormFactor.wide => _wide(pages),
         FormFactor.television => Scaffold(
           body: SafeArea(
             child: Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    televisionInset,
-                    24,
-                    televisionInset,
-                    8,
+                if (!covered)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      televisionInset,
+                      24,
+                      televisionInset,
+                      8,
+                    ),
+                    child: Focus(
+                      canRequestFocus: false,
+                      skipTraversal: true,
+                      onFocusChange: (focused) =>
+                          setState(() => _headerFocused = focused),
+                      child: _televisionHeader(),
+                    ),
                   ),
-                  child: Row(
-                    spacing: 6,
-                    children: [
-                      for (final tab in AppTab.values)
-                        _TelevisionTab(
-                          tab: tab,
-                          selected: tab == _tab,
-                          focusNode: _tabFocus[tab.index],
-                          onTap: () => _select(tab),
-                        ),
-                    ],
-                  ),
-                ),
                 Expanded(child: pages),
               ],
             ),
           ),
         ),
       },
+    );
+  }
+
+  Widget _televisionHeader() {
+    final tabs = Row(
+      key: _televisionTabs,
+      spacing: 6,
+      children: [
+        for (final tab in AppTab.values)
+          _TelevisionTab(
+            tab: tab,
+            selected: tab == _tab,
+            focusNode: _tabFocus[tab.index],
+            onTap: () => _select(tab),
+          ),
+      ],
+    );
+    final store = widget.store;
+    if (_tab != AppTab.explore || store.source.isEmpty) {
+      return SizedBox(height: 48, child: tabs);
+    }
+    final source = SourceSite.byId(store.source);
+    return SourceBar(
+      source: source.name,
+      televisionLeading: tabs,
+      onSwitchSource: (anchor) => pickSource(anchor, store),
+      onOpenSearch: () => openSearch(context, store, source),
+      onSearchSubmitted: (query) =>
+          openSearch(context, store, source, query: query),
     );
   }
 

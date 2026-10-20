@@ -689,7 +689,7 @@ class NativeRepository extends AppRepository {
     String category = '',
     bool force = false,
   }) async => CatalogPage.fromJson(
-    await _read('catalog-$source', {
+    await _read(query.isEmpty ? 'catalog-$source' : 'catalog-$source-search', {
       'action': 'catalog',
       'source': source,
       'page': page,

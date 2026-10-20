@@ -12,13 +12,11 @@ class CategoryTabs<T> extends StatefulWidget {
     required this.selected,
     required this.onSelected,
     this.onShowAll,
-    this.onAnotherBatch,
   });
   final List<ChoiceOption<T>> options;
   final T selected;
   final ValueChanged<T> onSelected;
   final void Function(BuildContext anchor)? onShowAll;
-  final VoidCallback? onAnotherBatch;
 
   @override
   State<CategoryTabs<T>> createState() => _CategoryTabsState<T>();
@@ -72,6 +70,20 @@ class _CategoryTabsState<T> extends State<CategoryTabs<T>> {
     _keys.removeWhere(
       (value, _) => !widget.options.any((option) => option.value == value),
     );
+    final television = form == FormFactor.television;
+    final showAll = switch (widget.onShowAll) {
+      final onShowAll? when _overflows => Padding(
+        padding: EdgeInsets.only(right: television ? 10 : 0),
+        child: Builder(
+          builder: (anchor) => BarButton(
+            icon: Icons.grid_view_rounded,
+            tooltip: '全部分类',
+            onPressed: () => onShowAll(anchor),
+          ),
+        ),
+      ),
+      _ => null,
+    };
     return Container(
       height: height,
       decoration: BoxDecoration(
@@ -79,6 +91,7 @@ class _CategoryTabsState<T> extends State<CategoryTabs<T>> {
       ),
       child: Row(
         children: [
+          if (television) ?showAll,
           Expanded(
             child: Stack(
               children: [
@@ -128,38 +141,7 @@ class _CategoryTabsState<T> extends State<CategoryTabs<T>> {
               ],
             ),
           ),
-          if (widget.onAnotherBatch case final onAnotherBatch?)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: FocusRing(
-                radius: 999,
-                child: TextButton(
-                  onPressed: onAnotherBatch,
-                  style: form == FormFactor.television
-                      ? TextButton.styleFrom(
-                          backgroundColor: colors.surfaceContainerHigh,
-                          foregroundColor: colors.onSurface,
-                          minimumSize: const Size(0, 36),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                        )
-                      : null,
-                  child: const Text('换一批'),
-                ),
-              ),
-            ),
-          if (widget.onShowAll case final onShowAll? when _overflows)
-            Padding(
-              padding: EdgeInsets.only(
-                left: form == FormFactor.television ? 10 : 0,
-              ),
-              child: Builder(
-                builder: (anchor) => BarButton(
-                  icon: Icons.grid_view_rounded,
-                  tooltip: '全部分类',
-                  onPressed: () => onShowAll(anchor),
-                ),
-              ),
-            ),
+          if (!television) ?showAll,
         ],
       ),
     );

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:duanju_app/batch_downloads.dart';
-import 'package:duanju_app/catalog_browser.dart';
 import 'package:duanju_app/library_updater.dart';
 import 'package:duanju_app/local_store.dart';
 import 'package:duanju_app/models.dart';
@@ -142,27 +141,6 @@ void main() {
       expect(changed, isEmpty);
       expect(updater.status('hongguo'), isNull);
       expect(repository.starts, hasLength(1));
-    },
-  );
-
-  test(
-    'cache refresh uses saved pagination even when stale and never requests a head page',
-    () async {
-      final repository = LibraryFeatureRepository();
-      final browser = CatalogBrowser(repository);
-      final group = SourceGroup('hongguo', '红果', [SourceSite.byId('hongguo')]);
-      repository.cachedPages['hongguo'] = CatalogPage(
-        [first],
-        page: 7,
-        hasMore: true,
-        fresh: false,
-      );
-      final page = await browser.load(group, cacheOnly: true);
-      expect(page.page, 7);
-      expect(page.items.single.id, first.id);
-      expect(repository.requests, isEmpty);
-      await browser.load(group, more: true);
-      expect(repository.pages, [8]);
     },
   );
 

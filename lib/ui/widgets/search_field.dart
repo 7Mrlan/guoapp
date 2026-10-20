@@ -6,11 +6,17 @@ class SearchField extends StatelessWidget {
     required this.hint,
     required this.onSubmitted,
     this.controller,
+    this.focusNode,
+    this.onChanged,
+    this.autofocus = false,
     this.height = 40,
   });
   final String hint;
   final ValueChanged<String> onSubmitted;
   final TextEditingController? controller;
+  final FocusNode? focusNode;
+  final ValueChanged<String>? onChanged;
+  final bool autofocus;
   final double height;
 
   @override
@@ -21,6 +27,9 @@ class SearchField extends StatelessWidget {
       height: height,
       child: TextField(
         controller: controller,
+        focusNode: focusNode,
+        autofocus: autofocus,
+        onChanged: onChanged,
         onSubmitted: onSubmitted,
         textInputAction: TextInputAction.search,
         style: const TextStyle(fontSize: 14),

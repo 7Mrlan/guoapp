@@ -11,6 +11,7 @@ import 'app_scope.dart';
 import 'shell/app_shell.dart';
 import 'theme/app_theme.dart';
 import 'theme/system_color.dart';
+import 'widgets/focus_ring.dart';
 
 class DuanjuApp extends StatefulWidget {
   const DuanjuApp({
@@ -142,7 +143,9 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
                     _ => false,
                   },
               systemColorAvailable: _systemColor != null,
-              child: FocusTraversalGroup(child: child!),
+              child: FocusOutlineLayer(
+                child: FocusTraversalGroup(child: child!),
+              ),
             ),
           ),
         ),
