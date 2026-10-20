@@ -30,11 +30,13 @@ type hongguoCatalogCursor struct {
 }
 
 type hongguoCatalogState struct {
-	Version    int                             `json:"version"`
-	DeviceID   string                          `json:"deviceId"`
-	InstallID  string                          `json:"installId"`
-	Registered bool                            `json:"registered,omitempty"`
-	Feeds      map[string]hongguoCatalogCursor `json:"feeds"`
+	Version         int                             `json:"version"`
+	DeviceID        string                          `json:"deviceId"`
+	InstallID       string                          `json:"installId"`
+	Registered      bool                            `json:"registered,omitempty"`
+	HelperDeviceID  string                          `json:"helperDeviceId,omitempty"`
+	HelperInstallID string                          `json:"helperInstallId,omitempty"`
+	Feeds           map[string]hongguoCatalogCursor `json:"feeds"`
 }
 
 type hongguoAppClient struct {
@@ -84,6 +86,9 @@ func (downloader *Downloader) restoreHongguoCatalog(state *hongguoCatalogState) 
 		return
 	}
 	cloned := cloneHongguoCatalogState(state)
+	if !hongguoNumericID.MatchString(cloned.HelperDeviceID) || !hongguoNumericID.MatchString(cloned.HelperInstallID) {
+		cloned.HelperDeviceID, cloned.HelperInstallID = "", ""
+	}
 	for name, cursor := range cloned.Feeds {
 		known := false
 		for _, genre := range hongguoAppGenres {
@@ -143,13 +148,21 @@ func hongguoAppQuery(deviceID, installID string) url.Values {
 func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, path string, extra url.Values, payload any) (map[string]any, error) {
 	client := downloader.hongguoClient()
 	comment, _ := ctx.Value(hongguoCommentKey{}).(bool)
+	helper, _ := ctx.Value(hongguoHelperDeviceKey{}).(bool)
 	signed := !comment && path != hongguoBookmallTabPath
 	if signed {
-		_ = downloader.ensureHongguoDevice(ctx, "")
+		_ = downloader.ensureHongguoDevice(ctx, helper, "")
 	}
 	client.mu.Lock()
-	base, deviceID, installID := client.baseURL, client.state.DeviceID, client.state.InstallID
+	base := client.baseURL
+	deviceID, installID, _ := client.deviceLocked(helper)
 	client.mu.Unlock()
+	if helper {
+		if deviceID == "" || !signed {
+			return nil, errors.New("红果辅助设备不可用")
+		}
+		ctx = context.WithValue(ctx, requestLaneKey{}, "hongguo-helper")
+	}
 	query := hongguoAppQuery(deviceID, installID)
 	for key, values := range extra {
 		query[key] = append([]string(nil), values...)
@@ -232,11 +245,9 @@ func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, pat
 		}
 		if len(content) == 0 {
 			lastErr = errors.New("红果 App 接口未返回有效数据")
-			if signed && rotations < hongguoDeviceRotations && downloader.ensureHongguoDevice(ctx, deviceID) == nil {
+			if signed && rotations < hongguoDeviceRotations && downloader.ensureHongguoDevice(ctx, helper, deviceID) == nil {
 				rotations++
-				client.mu.Lock()
-				deviceID, installID = client.state.DeviceID, client.state.InstallID
-				client.mu.Unlock()
+				deviceID, installID, _ = client.device(helper)
 				query.Set("device_id", deviceID)
 				query.Set("iid", installID)
 				attempt--

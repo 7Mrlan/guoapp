@@ -29,8 +29,13 @@ func sourceFixtureDownloader(t *testing.T, transport sourceFixtureTransport) *Do
 	t.Helper()
 	d := &Downloader{cfg: Config{dataDir: t.TempDir(), Retries: 1, PageSize: 30, MaxPagesPerSort: 1},
 		client: &http.Client{Transport: transport}, limiter: newRequestLimiter(3, 0), providerHosts: map[string]string{}}
-	d.hongguoClient().state.Registered = true
+	registerHongguoFixtureDevices(d)
 	return d
+}
+
+func registerHongguoFixtureDevices(d *Downloader) {
+	state := &d.hongguoClient().state
+	state.Registered, state.HelperDeviceID, state.HelperInstallID = true, "424242", "4242429"
 }
 
 func sourceFixtureEngine(t *testing.T, transport sourceFixtureTransport) *nativeEngine {
@@ -43,7 +48,7 @@ func sourceFixtureEngine(t *testing.T, transport sourceFixtureTransport) *native
 	engine.downloader.client.Transport = transport
 	engine.downloader.limiter = newRequestLimiter(3, 0)
 	engine.downloader.cfg.Retries = 1
-	engine.downloader.hongguoClient().state.Registered = true
+	registerHongguoFixtureDevices(engine.downloader)
 	return engine
 }
 

@@ -13,6 +13,7 @@ const (
 	hongguoBookmallTabPath        = "/reading/bookapi/bookmall/tab/v1/"
 	hongguoBookmallCellChangePath = "/reading/bookapi/bookmall/cell/change/v1/"
 	hongguoDoubleColFeedShowType  = "506"
+	hongguoCellPageSize           = 6
 )
 
 var hongguoRecommendationFeeds = []struct {
@@ -141,6 +142,31 @@ func (downloader *Downloader) fetchHongguoRecommendations(ctx context.Context, q
 	return page, ctx.Err()
 }
 
+type hongguoCellPage struct {
+	cards   []any
+	next    int
+	hasMore bool
+	session string
+}
+
+func (downloader *Downloader) fetchHongguoCellPage(ctx context.Context, page hongguoRecommendationPage, tabType string, offset int) (hongguoCellPage, error) {
+	extra := url.Values{
+		"cell_id": {page.CellID}, "change_type": {"0"}, "offset": {strconv.Itoa(offset)}, "limit": {"10"},
+		"session_id": {page.SessionID}, "tab_type": {tabType}, "client_req_type": {"2"}, "show_type": {page.ShowType},
+	}
+	result, err := downloader.hongguoAppRequest(ctx, http.MethodGet, hongguoBookmallCellChangePath, extra, nil)
+	if err != nil {
+		return hongguoCellPage{}, err
+	}
+	data := nestedMap(result, "data")
+	hasMore, paginationOK := data["has_more"].(bool)
+	next, parseErr := strconv.Atoi(mapString(data, "next_offset"))
+	if !paginationOK || hasMore && (parseErr != nil || next <= offset) {
+		return hongguoCellPage{}, errors.New("红果推荐数据格式异常，已保留上次位置")
+	}
+	return hongguoCellPage{cards: anyList(nestedMap(data, "cell_view")["cell_data"]), next: next, hasMore: hasMore, session: mapString(data, "session_id")}, nil
+}
+
 func (downloader *Downloader) fetchHongguoFeedRecommendations(ctx context.Context, query hongguoRecommendationQuery, tabType, bottomTab string) (hongguoRecommendationPage, error) {
 	seen := make(map[string]bool, len(query.Seen))
 	for _, id := range query.Seen {
@@ -151,26 +177,31 @@ func (downloader *Downloader) fetchHongguoFeedRecommendations(ctx context.Contex
 	for attempt := 0; attempt < 3 && len(page.Dramas) == 0 && page.HasMore; attempt++ {
 		var cards []any
 		if page.CellID != "" {
-			extra := url.Values{
-				"cell_id": {page.CellID}, "change_type": {"0"}, "offset": {strconv.Itoa(page.NextOffset)}, "limit": {"10"},
-				"session_id": {page.SessionID}, "tab_type": {tabType}, "client_req_type": {"2"}, "show_type": {page.ShowType},
-			}
-			result, err := downloader.hongguoAppRequest(ctx, http.MethodGet, hongguoBookmallCellChangePath, extra, nil)
+			helperOffset := page.NextOffset + hongguoCellPageSize
+			var helperPage hongguoCellPage
+			var helperErr error
+			helperDone := make(chan struct{})
+			go func(page hongguoRecommendationPage) {
+				defer close(helperDone)
+				helperPage, helperErr = downloader.fetchHongguoCellPage(context.WithValue(ctx, hongguoHelperDeviceKey{}, true), page, tabType, helperOffset)
+			}(page)
+			primary, err := downloader.fetchHongguoCellPage(ctx, page, tabType, page.NextOffset)
+			<-helperDone
 			if err != nil {
 				return hongguoRecommendationPage{}, err
 			}
-			data := nestedMap(result, "data")
-			hasMore, paginationOK := data["has_more"].(bool)
-			next, parseErr := strconv.Atoi(mapString(data, "next_offset"))
-			if !paginationOK || hasMore && (parseErr != nil || next <= page.NextOffset) {
-				return hongguoRecommendationPage{}, errors.New("红果推荐数据格式异常，已保留上次位置")
+			cards = primary.cards
+			page.HasMore, page.SessionID = primary.hasMore, firstNonEmpty(primary.session, page.SessionID)
+			if primary.hasMore {
+				page.NextOffset = primary.next
 			}
-			if hasMore {
-				page.NextOffset = next
+			if helperErr == nil && primary.hasMore && primary.next == helperOffset {
+				cards = append(cards, helperPage.cards...)
+				page.HasMore = helperPage.hasMore
+				if helperPage.hasMore {
+					page.NextOffset = helperPage.next
+				}
 			}
-			page.HasMore = hasMore
-			page.SessionID = firstNonEmpty(mapString(data, "session_id"), page.SessionID)
-			cards = anyList(nestedMap(data, "cell_view")["cell_data"])
 		} else {
 			extra := url.Values{"tab_type": {tabType}, "offset": {strconv.Itoa(page.NextOffset)}, "client_req_type": {"1"}}
 			if bottomTab != "" {
