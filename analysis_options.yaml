@@ -9,3 +9,4 @@ analyzer:
     - windows/**
     - ios/**
     - legacy_ui/**
+    - legacy_test/**
