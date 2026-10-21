@@ -5,7 +5,7 @@ import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
 import '../shell/app_shell.dart';
-import '../shell/pending_pages.dart';
+import '../detail/detail_page.dart';
 import '../widgets/bar_button.dart';
 import '../widgets/category_tabs.dart';
 import '../widgets/choice_panel.dart';
@@ -49,8 +49,10 @@ class ExplorePageState extends State<ExplorePage> {
     await _explore?.refresh();
   }
 
-  void _open(Drama drama) =>
-      openPage<void>(context, (_) => PendingDetailPage(drama: drama));
+  void _open(Drama drama) => openPage<void>(
+    context,
+    (_) => DetailPage(store: widget.store, drama: drama),
+  );
 
   Future<void> _pickCategory(BuildContext anchor) async {
     final explore = _explore!;

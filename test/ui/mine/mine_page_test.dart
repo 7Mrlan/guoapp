@@ -1,5 +1,6 @@
 import 'package:duanju_app/local_store.dart';
 import 'package:duanju_app/models.dart';
+import 'package:duanju_app/ui/detail/detail_page.dart';
 import 'package:duanju_app/ui/shell/pending_pages.dart';
 import 'package:duanju_app/ui/widgets/drama_tile.dart';
 import 'package:flutter/material.dart';
@@ -56,7 +57,7 @@ void main() {
 
     await tester.tap(find.text('剧甲'));
     await settle(tester);
-    expect(find.byType(PendingDetailPage), findsOneWidget);
+    expect(find.byType(DetailPage), findsOneWidget);
   });
 
   testWidgets('users without download permission see no downloads', (

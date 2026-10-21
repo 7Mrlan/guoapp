@@ -1,6 +1,6 @@
 import 'package:duanju_app/ranking_models.dart';
 import 'package:duanju_app/ui/explore/explore_hero.dart';
-import 'package:duanju_app/ui/shell/pending_pages.dart';
+import 'package:duanju_app/ui/detail/detail_page.dart';
 import 'package:duanju_app/ui/widgets/cover_image.dart';
 import 'package:duanju_app/ui/widgets/drama_tile.dart';
 import 'package:duanju_app/ui/widgets/focus_ring.dart';
@@ -27,7 +27,7 @@ void main() {
 
     await tester.tap(find.text('分类short_play'));
     await settle(tester);
-    expect(find.byType(PendingDetailPage), findsOneWidget);
+    expect(find.byType(DetailPage), findsOneWidget);
   });
 
   testWidgets('recent watching on this source takes the hero', (tester) async {

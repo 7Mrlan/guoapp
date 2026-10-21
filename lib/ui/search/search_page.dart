@@ -8,8 +8,8 @@ import '../../local_store.dart';
 import '../../models.dart';
 import '../../source_catalog.dart';
 import '../app_scope.dart';
+import '../detail/detail_page.dart';
 import '../shell/app_shell.dart';
-import '../shell/pending_pages.dart';
 import '../widgets/drama_grid.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/search_field.dart';
@@ -100,8 +100,10 @@ class _SearchPageState extends State<SearchPage> {
     });
   }
 
-  void _open(Drama drama) =>
-      openPage<void>(context, (_) => PendingDetailPage(drama: drama));
+  void _open(Drama drama) => openPage<void>(
+    context,
+    (_) => DetailPage(store: widget.store, drama: drama),
+  );
 
   @override
   Widget build(BuildContext context) {

@@ -72,6 +72,16 @@ DownloadJob downloadJob(
   bytes: bytes,
 );
 
+DramaDetail dramaDetail(
+  Drama drama, {
+  int count = 80,
+  Set<int> vip = const {},
+  String warning = '',
+}) => DramaDetail(drama, [
+  for (var number = 1; number <= count; number++)
+    Episode({'currentEpisode': number, 'vip': vip.contains(number)}, number),
+], warning: warning);
+
 LocalStore restartStore(LocalStore store) {
   final restarted = LocalStore(store.preferences);
   addTearDown(restarted.dispose);
@@ -177,8 +187,16 @@ class FakeRepository extends AppRepository {
   Future<String> cover(Drama drama, {bool force = false}) async =>
       throw AppFailure('测试数据没有海报');
 
+  final details = <String, DramaDetail>{};
+  String detailFailure = '';
+  int detailRequests = 0;
+
   @override
-  Future<DramaDetail> detail(Drama drama) async => throw UnimplementedError();
+  Future<DramaDetail> detail(Drama drama) async {
+    detailRequests++;
+    if (detailFailure.isNotEmpty) throw AppFailure(detailFailure);
+    return details[drama.id] ?? DramaDetail(drama, const []);
+  }
 
   @override
   Future<PlaybackPlan> resolve(

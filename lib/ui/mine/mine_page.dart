@@ -5,6 +5,7 @@ import '../../download_overview.dart';
 import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
+import '../detail/detail_page.dart';
 import '../shell/app_shell.dart';
 import '../shell/pending_pages.dart';
 import '../widgets/cover_image.dart';
@@ -88,8 +89,10 @@ class MinePage extends StatelessWidget {
           ? '已看完'
           : '看到第 ${entry.episode} 集',
       tag: SourceSite.byId(drama.source).name,
-      onTap: () =>
-          openPage<void>(context, (_) => PendingDetailPage(drama: drama)),
+      onTap: () => openPage<void>(
+        context,
+        (_) => DetailPage(store: store, drama: drama),
+      ),
     );
   }
 
