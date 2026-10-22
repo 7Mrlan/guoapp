@@ -29,10 +29,6 @@ class LocalStore extends ChangeNotifier {
   final Future<String> Function(String pin, String salt) _pinHasher;
   LocalSnapshot? _snapshot;
   LanDocument? _lanDocumentCache;
-  int _lanRevision = 0;
-  int _lanUrgentRevision = 0;
-  int get lanRevision => _lanRevision;
-  int get lanUrgentRevision => _lanUrgentRevision;
   final Map<String, WatchEntry> _history = {};
   final Map<String, Drama> _favorites = {};
   final Map<String, FollowState> _followStates = {};
@@ -358,8 +354,6 @@ class LocalStore extends ChangeNotifier {
       ThemeColor.orange;
   bool get sideBarExpanded => preferences.getBool('sideBarExpanded') ?? true;
 
-  bool get autoExport => !locked && (_bool('autoExport') ?? false);
-  bool get exportPosters => !locked && (_bool('exportPosters') ?? false);
   String get source {
     if (locked) return '';
     final value = _string(_key('source')) ?? '';
@@ -459,7 +453,6 @@ class LocalStore extends ChangeNotifier {
     Iterable<String> remove = const [],
     bool replace = false,
     bool trackSync = true,
-    bool syncUrgent = true,
     Set<String> clearSyncProgress = const {},
   }) async {
     final snapshot = _snapshot;
@@ -483,17 +476,6 @@ class LocalStore extends ChangeNotifier {
     values.putIfAbsent('activeProfile', () => _current);
     try {
       await snapshot.commit(values);
-      if (trackSync &&
-          !replace &&
-          {...changes.keys, ...remove}.any(
-            (key) =>
-                key == _key('favorites') ||
-                key == _key('history') ||
-                key == _key('followStates'),
-          )) {
-        _lanRevision++;
-        if (syncUrgent) _lanUrgentRevision++;
-      }
     } on SnapshotRecoveryRequired catch (error) {
       _block(error.toString());
       _notify();
@@ -511,10 +493,6 @@ class LocalStore extends ChangeNotifier {
     });
   }
 
-  Future<void> setExportPosters(bool value) =>
-      _setting('exportPosters', value, admin: true);
-  Future<void> setAutoExport(bool value) =>
-      _setting('autoExport', value, admin: true);
   Future<void> setForceLogin(bool value) =>
       _setting('forceLogin', value, admin: true);
   Future<void> setHideVip(bool value) => _setting(_key('hideVip'), value);
@@ -670,7 +648,7 @@ class LocalStore extends ChangeNotifier {
             favorites.values.map((entry) => entry.toJson()).toList(),
           ),
         },
-      }, syncUrgent: false);
+      });
       _loadLibrary();
       _notify();
     });
@@ -999,8 +977,8 @@ class LocalStore extends ChangeNotifier {
       'themeMode': themeMode,
       'followSystemColor': followSystemColor,
       'themeColor': themeColor.name,
-      'autoExport': autoExport,
-      'exportPosters': exportPosters,
+      'autoExport': _bool('autoExport') ?? false,
+      'exportPosters': _bool('exportPosters') ?? false,
       'forceLogin': forceLogin,
       'libraries': {
         for (final profile in _profiles)

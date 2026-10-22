@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_device.dart';
 import 'core_bridge.dart';
 import 'diary_service.dart';
-import 'lan_controller.dart';
 import 'local_store.dart';
 import 'media_library.dart';
 import 'ui/app.dart';
@@ -55,8 +54,6 @@ class _AppBootstrapState extends State<AppBootstrap>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    LanController.current?.dispose();
-    LanController.current = null;
     MediaLibrary.current?.dispose();
     MediaLibrary.current = null;
     store?.dispose();
@@ -107,16 +104,6 @@ class _AppBootstrapState extends State<AppBootstrap>
         final local = store = LocalStore(preferences);
         repository.access = local;
         MediaLibrary.attach(repository, local);
-        LanController.current?.dispose();
-        LanController.current = LanController(
-          repository,
-          local,
-          kind: device.television
-              ? 'tv'
-              : Platform.isWindows
-              ? 'computer'
-              : 'phone',
-        );
       });
     } catch (failure) {
       if (mounted) setState(() => error = failure);

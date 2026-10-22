@@ -68,16 +68,6 @@ class AppFailure implements Exception {
 }
 
 abstract class AppRepository {
-  Future<Map<String, dynamic>> lan(
-    String command,
-    Map<String, dynamic> payload,
-  ) async => throw AppFailure('当前环境不支持设备互联');
-  Future<PlaybackPlan?> prepareHandoff(
-    Drama drama,
-    Episode episode, {
-    int quality = 0,
-  }) => preload(drama, episode, quality: quality);
-  Future<void> cancelHandoff() async {}
   Future<ResourceSettings> resourceSettings() async => const ResourceSettings();
   Future<ResourceSettings> saveResourceSettings(
     ResourceSettings settings,
@@ -198,32 +188,6 @@ class NativeRepository extends AppRepository {
   final _readOwner = DateTime.now().microsecondsSinceEpoch.toString();
   int _readSequence = 0;
   final _activeReads = <String, int>{};
-
-  @override
-  Future<Map<String, dynamic>> lan(
-    String command,
-    Map<String, dynamic> payload,
-  ) => _call({'action': 'lan', 'command': command, 'lan': payload});
-
-  @override
-  Future<PlaybackPlan?> prepareHandoff(
-    Drama drama,
-    Episode episode, {
-    int quality = 0,
-  }) async {
-    final data = await _read('handoff', {
-      'action': 'prepareHandoff',
-      'drama': drama.toJson(),
-      'chapter': episode.raw,
-      'index': episode.number,
-      'quality': quality,
-      'force': access != null && !access!.canDownload,
-    });
-    return PlaybackPlan.fromJson(data);
-  }
-
-  @override
-  Future<void> cancelHandoff() => _cancelReads('handoff');
 
   void _adminPermission() {
     if (access != null && (access!.locked || !access!.profile.admin)) {
@@ -559,7 +523,6 @@ class NativeRepository extends AppRepository {
         'metadata',
         'resolve',
         'preload',
-        'prepareHandoff',
         'enqueueDownloads',
         'localPlayback',
       }.contains(action)) {
@@ -628,7 +591,6 @@ class NativeRepository extends AppRepository {
             'metadata',
             'danmaku',
             'preload',
-            'prepareHandoff',
           }.contains(input['action'])) {
         unawaited(
           _call({

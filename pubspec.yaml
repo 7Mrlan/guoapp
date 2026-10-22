@@ -24,7 +24,6 @@ dependencies:
   file_picker: 13.1.0
   crypto: ^3.0.7
   window_manager: ^0.5.1
-  nsd: 5.0.1
   package_info_plus: ^10.2.1
   dynamic_color: ^2.1.0
 
