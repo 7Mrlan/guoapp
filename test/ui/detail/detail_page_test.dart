@@ -4,6 +4,7 @@ import 'package:duanju_app/ui/app_scope.dart';
 import 'package:duanju_app/ui/detail/detail_page.dart';
 import 'package:duanju_app/ui/shell/pending_pages.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/app_harness.dart';
@@ -121,20 +122,66 @@ void main() {
     );
   });
 
-  testWidgets('television uses the phone layout for now', (tester) async {
+  testWidgets('television moves focus between the two columns', (tester) async {
     final repository = FakeRepository()
       ..jobs = const []
-      ..details[first.id] = dramaDetail(first, count: 5);
+      ..details[first.id] = dramaDetail(
+        Drama(
+          id: first.id,
+          source: first.source,
+          title: first.title,
+          episodes: 80,
+          tags: const ['甜宠', '逆袭'],
+        ),
+        vip: {80},
+      );
+    final store = await openStore();
+    await store.saveWatch(watching(first, episode: 12));
     await _pump(
       tester,
       repository,
-      await openStore(),
+      store,
       first,
       size: televisionSize,
       television: true,
     );
+    Future<void> press(LogicalKeyboardKey key) async {
+      await tester.sendKeyEvent(key);
+      await settle(tester);
+    }
 
-    expect(find.byTooltip('下载选集'), findsOneWidget);
-    expect(find.text('立即播放'), findsOneWidget);
+    expect(find.text('共 80 集 · 当前第 12 集'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('逆袭')).dy,
+      tester.getTopLeft(find.text('甜宠')).dy,
+    );
+    expect(find.text('下载选集'), findsNothing);
+    expect(find.byTooltip('下载选集'), findsNothing);
+    final play = find.text('继续播放 · 第 12 集');
+    final grid = tester.getRect(find.byKey(const ValueKey('episode-1')));
+    expect(grid.left, greaterThan(tester.getRect(play).right));
+    expect(focusHolds(tester, play), isTrue);
+
+    await press(LogicalKeyboardKey.arrowRight);
+    expect(focusHolds(tester, find.text('12')), isTrue);
+    await press(LogicalKeyboardKey.arrowUp);
+    expect(focusHolds(tester, find.text('6')), isTrue);
+    await press(LogicalKeyboardKey.arrowUp);
+    expect(focusHolds(tester, find.text('1-30')), isTrue);
+
+    await press(LogicalKeyboardKey.arrowRight);
+    expect(focusHolds(tester, find.text('31-60')), isTrue);
+    expect(find.byKey(const ValueKey('episode-31')), findsOneWidget);
+    await press(LogicalKeyboardKey.arrowDown);
+    expect(focusHolds(tester, find.text('31')), isTrue);
+    await press(LogicalKeyboardKey.arrowLeft);
+    expect(focusHolds(tester, play), isTrue);
+
+    await press(LogicalKeyboardKey.arrowRight);
+    expect(focusHolds(tester, find.text('31')), isTrue);
+    expect(await systemBack(tester), isTrue);
+    expect(focusHolds(tester, play), isTrue);
+    await systemBack(tester);
+    expect(find.text('打开详情'), findsOneWidget);
   });
 }
