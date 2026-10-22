@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -97,6 +98,8 @@ func TestNativeStreamDiagnosticsHLSAssetsAndPrivacy(t *testing.T) {
 		case "/child.m3u8":
 			w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
 			io.WriteString(w, "#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"secret.key\"\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:3,\nsegment.ts\n#EXT-X-ENDLIST\n")
+		case "/forbidden.ts":
+			w.WriteHeader(http.StatusForbidden)
 		default:
 			w.Header().Set("Content-Type", "application/octet-stream")
 			io.WriteString(w, "binary-media")
@@ -113,7 +116,7 @@ func TestNativeStreamDiagnosticsHLSAssetsAndPrivacy(t *testing.T) {
 	}
 	defer stream.server.Close()
 	address, token := stream.nativeOpen(providerMedia{URL: upstream.URL + "/master.m3u8?token=hidden-query", HLSKey: []byte("hidden-key-bytes")})
-	read := func(address string) string {
+	fetch := func(address string) (int, string) {
 		t.Helper()
 		request, _ := http.NewRequest(http.MethodGet, address, nil)
 		request.Header.Set("Authorization", "Bearer hidden-auth")
@@ -124,10 +127,18 @@ func TestNativeStreamDiagnosticsHLSAssetsAndPrivacy(t *testing.T) {
 		}
 		defer response.Body.Close()
 		body, err := io.ReadAll(response.Body)
-		if err != nil || response.StatusCode != http.StatusOK {
-			t.Fatalf("status=%d body=%s error=%v", response.StatusCode, body, err)
+		if err != nil {
+			t.Fatal(err)
 		}
-		return string(body)
+		return response.StatusCode, string(body)
+	}
+	read := func(address string) string {
+		t.Helper()
+		status, body := fetch(address)
+		if status != http.StatusOK {
+			t.Fatalf("status=%d body=%s", status, body)
+		}
+		return body
 	}
 	playlistURL := func(body string) string {
 		for _, line := range strings.Split(body, "\n") {
@@ -156,6 +167,13 @@ func TestNativeStreamDiagnosticsHLSAssetsAndPrivacy(t *testing.T) {
 	if body := read(keyURL); body != "binary-media" {
 		t.Fatal("upstream key was treated as a playlist")
 	}
+	if _, err := os.Stat(stream.downloader.diagnostics.path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("successful playback wrote diagnostics: %v", err)
+	}
+	forbidden := stream.nativeAsset(token, session, nativeStreamAsset{kind: "segment", address: upstream.URL + "/forbidden.ts?secret=hidden-query"})
+	if status, _ := fetch(forbidden); status != http.StatusForbidden {
+		t.Fatalf("forbidden segment returned status %d", status)
+	}
 	stream.nativeRelease(token)
 	events, text := streamDiagnosticEvents(t, stream)
 	for _, secret := range []string{token, "hidden-query", "hidden-key-bytes", "hidden-auth", "hidden-cookie"} {
@@ -163,19 +181,8 @@ func TestNativeStreamDiagnosticsHLSAssetsAndPrivacy(t *testing.T) {
 			t.Fatalf("diagnostic exposed %s", secret)
 		}
 	}
-	for _, marker := range []string{"stream.local_request", "stream.upstream_headers", "stream.local_response", "kind=master_playlist", "kind=media_playlist", "asset=child_playlist", "asset=key", "asset=map", "asset=segment", "reason=release", "elapsed_ms=", "phase=connect_done"} {
-		if !strings.Contains(text, marker) {
-			t.Errorf("missing diagnostic %s", marker)
-		}
-	}
-	count := 0
-	for _, event := range events {
-		if event.Event == "stream.local_response" && event.HTTPStatus == 200 {
-			count++
-		}
-	}
-	if count != 6 {
-		t.Fatalf("logged %d completed responses, want 6", count)
+	if len(events) != 1 || events[0].Event != "stream.upstream_status" || events[0].HTTPStatus != http.StatusForbidden || !strings.Contains(events[0].Message, "asset=segment") {
+		t.Fatalf("unexpected diagnostics: %s", text)
 	}
 }
 
@@ -231,9 +238,12 @@ func TestNativeStreamDiagnosticsCancellationAndHTTPFailure(t *testing.T) {
 		stream.nativeRelease(token)
 	}
 	_, text := streamDiagnosticEvents(t, stream)
-	for _, marker := range []string{"\"httpStatus\":403", "\"httpStatus\":502", "error=canceled", "reason=release"} {
-		if !strings.Contains(text, marker) {
-			t.Errorf("missing diagnostic %s", marker)
+	if !strings.Contains(text, "\"httpStatus\":403") {
+		t.Error("missing upstream status diagnostic")
+	}
+	for _, marker := range []string{"canceled", "reason=release"} {
+		if strings.Contains(text, marker) {
+			t.Errorf("normal cancellation logged %s", marker)
 		}
 	}
 	if nativeStreamError(context.DeadlineExceeded) != "deadline" {
