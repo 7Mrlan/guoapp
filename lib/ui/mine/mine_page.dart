@@ -7,6 +7,7 @@ import '../../models.dart';
 import '../app_scope.dart';
 import '../detail/detail_page.dart';
 import '../shell/app_shell.dart';
+import '../settings/settings_page.dart';
 import '../shell/pending_pages.dart';
 import '../widgets/cover_image.dart';
 import '../widgets/drama_tile.dart';
@@ -68,8 +69,7 @@ class MinePage extends StatelessWidget {
   );
 
   Widget _settings(BuildContext context) => _SettingsEntry(
-    onTap: () =>
-        openPage<void>(context, (_) => PendingSettingsPage(store: store)),
+    onTap: () => openPage<void>(context, (_) => SettingsPage(store: store)),
   );
 
   Widget _poster(
@@ -317,7 +317,7 @@ class MinePage extends StatelessWidget {
                         subtitle: '外观、播放、站源与网络',
                         onTap: () => openPage<void>(
                           context,
-                          (_) => PendingSettingsPage(store: store),
+                          (_) => SettingsPage(store: store),
                         ),
                       ),
                     ),

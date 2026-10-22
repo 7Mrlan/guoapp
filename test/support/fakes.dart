@@ -5,6 +5,7 @@ import 'package:duanju_app/local_profiles.dart';
 import 'package:duanju_app/local_store.dart';
 import 'package:duanju_app/models.dart';
 import 'package:duanju_app/ranking_models.dart';
+import 'package:duanju_app/resource_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -107,6 +108,19 @@ class FakeRepository extends AppRepository {
   String failure = '';
   List<DownloadJob>? jobs;
   int downloadRequests = 0;
+  ResourceSettings resource = const ResourceSettings();
+  final savedResources = <ResourceSettings>[];
+
+  @override
+  Future<ResourceSettings> resourceSettings() async => resource;
+
+  @override
+  Future<ResourceSettings> saveResourceSettings(
+    ResourceSettings settings,
+  ) async {
+    savedResources.add(settings);
+    return resource = settings;
+  }
 
   @override
   bool get supportsDownloads => jobs != null;

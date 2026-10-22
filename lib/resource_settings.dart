@@ -33,6 +33,24 @@ class ResourceSettings {
         systemProxyStatus: data['systemProxyStatus'] as String? ?? '',
       );
 
+  ResourceSettings copyWith({
+    String? proxyMode,
+    String? proxyUrl,
+    int? catalogConcurrency,
+    int? catalogIntervalMs,
+    int? downloadConcurrency,
+    bool? downloadBySource,
+  }) => ResourceSettings(
+    proxyMode: proxyMode ?? this.proxyMode,
+    proxyUrl: proxyUrl ?? this.proxyUrl,
+    catalogConcurrency: catalogConcurrency ?? this.catalogConcurrency,
+    catalogIntervalMs: catalogIntervalMs ?? this.catalogIntervalMs,
+    downloadConcurrency: downloadConcurrency ?? this.downloadConcurrency,
+    downloadBySource: downloadBySource ?? this.downloadBySource,
+    warning: warning,
+    systemProxyStatus: systemProxyStatus,
+  );
+
   Map<String, dynamic> toJson() => {
     'proxyMode': proxyMode,
     'proxyUrl': proxyUrl,

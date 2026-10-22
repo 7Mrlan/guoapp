@@ -1,6 +1,6 @@
 import 'package:duanju_app/ui/mine/mine_page.dart';
-import 'package:duanju_app/ui/settings/appearance_screen.dart';
-import 'package:duanju_app/ui/shell/pending_pages.dart';
+import 'package:duanju_app/ui/settings/appearance_settings.dart';
+import 'package:duanju_app/ui/settings/settings_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,18 +21,11 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await settle(tester);
       expect(find.byType(SimpleDialog), findsNothing);
-      expect(find.byType(AppearanceScreen), findsOneWidget);
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.pump();
-      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-      await settle(tester);
-      expect(find.byType(AppearanceScreen), findsNothing);
-      expect(find.text('外观'), findsOneWidget);
+      expect(find.byType(AppearanceSettings), findsOneWidget);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await settle(tester);
-      expect(find.byType(PendingSettingsPage), findsNothing);
+      expect(find.byType(SettingsPage), findsNothing);
       expect(find.byType(MinePage), findsOneWidget);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);

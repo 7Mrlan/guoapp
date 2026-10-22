@@ -1,5 +1,6 @@
 import 'package:duanju_app/ui/explore/explore_page.dart';
-import 'package:duanju_app/ui/settings/appearance_screen.dart';
+import 'package:duanju_app/ui/settings/appearance_settings.dart';
+import 'package:duanju_app/ui/settings/settings_page.dart';
 import 'package:duanju_app/ui/widgets/focus_ring.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -22,7 +23,7 @@ void main() {
       expect(find.byType(NavigationBar), findsNothing);
 
       expect(await systemBack(tester), isTrue);
-      expect(find.byType(AppearanceScreen), findsNothing);
+      expect(find.byType(AppearanceSettings), findsNothing);
       expect(find.byType(NavigationBar), findsNothing);
 
       expect(await systemBack(tester), isTrue);
@@ -43,13 +44,13 @@ void main() {
       expect(navItem('explore'), findsOneWidget);
 
       await openTab(tester, 'explore');
-      expect(find.byType(AppearanceScreen), findsNothing);
+      expect(find.byType(AppearanceSettings), findsNothing);
       await openTab(tester, 'mine');
-      expect(find.byType(AppearanceScreen), findsOneWidget);
+      expect(find.byType(AppearanceSettings), findsOneWidget);
 
       await systemBack(tester);
-      expect(find.byType(AppearanceScreen), findsNothing);
-      expect(find.text('外观'), findsOneWidget);
+      expect(find.byType(SettingsPage), findsNothing);
+      expect(navItem('explore'), findsOneWidget);
     });
 
     testWidgets('the side bar remembers collapsing, narrow windows force it', (
@@ -123,14 +124,11 @@ void main() {
           tester.view.physicalSize = phoneSize;
         }
         await settle(tester);
-        expect(find.byType(AppearanceScreen), findsOneWidget);
+        expect(find.byType(SettingsPage), findsOneWidget);
         expect(navItem('explore'), findsNothing);
 
         await systemBack(tester);
-        expect(find.byType(AppearanceScreen), findsNothing);
-        expect(navItem('explore'), findsNothing);
-
-        await systemBack(tester);
+        expect(find.byType(SettingsPage), findsNothing);
         expect(navItem('explore'), findsOneWidget);
       });
     }

@@ -21,12 +21,14 @@ class DuanjuApp extends StatefulWidget {
     this.bootstrapError,
     this.onRetry,
     this.television = false,
+    this.version = '',
   });
   final AppRepository repository;
   final LocalStore? store;
   final String? bootstrapError;
   final VoidCallback? onRetry;
   final bool television;
+  final String version;
 
   @override
   State<DuanjuApp> createState() => _DuanjuAppState();
@@ -144,6 +146,7 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
                     _ => false,
                   },
               systemColorAvailable: _systemColor != null,
+              version: widget.version,
               child: FocusOutlineLayer(
                 child: FocusTraversalGroup(
                   policy: ReadingOrderTraversalPolicy(

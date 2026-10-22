@@ -1,7 +1,7 @@
 import 'package:duanju_app/local_store.dart';
 import 'package:duanju_app/models.dart';
 import 'package:duanju_app/ui/detail/detail_page.dart';
-import 'package:duanju_app/ui/shell/pending_pages.dart';
+import 'package:duanju_app/ui/settings/settings_page.dart';
 import 'package:duanju_app/ui/widgets/drama_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -91,7 +91,7 @@ void main() {
 
     await tester.tap(find.text('设置'));
     await settle(tester);
-    expect(find.byType(PendingSettingsPage), findsOneWidget);
+    expect(find.byType(SettingsPage), findsOneWidget);
   });
 
   testWidgets('television shows one row of recent above the entry cards', (

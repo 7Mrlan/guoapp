@@ -51,12 +51,26 @@ Future<void> openSettings(WidgetTester tester) async {
 
 Future<void> openAppearance(WidgetTester tester) async {
   await openSettings(tester);
-  await tester.tap(find.text('外观'));
+  await openSettingsGroup(tester, '外观');
+}
+
+Future<void> openSettingsGroup(WidgetTester tester, String label) async {
+  final item = find.byWidgetPredicate(
+    (widget) =>
+        widget.key is ValueKey<String> &&
+        (widget.key! as ValueKey<String>).value.startsWith('settings-'),
+  );
+  await tester.tap(
+    item.evaluate().isEmpty
+        ? find.text(label)
+        : find.descendant(of: item, matching: find.text(label)),
+  );
   await settle(tester);
 }
 
 Future<bool> systemBack(WidgetTester tester) async {
   final handled = await tester.binding.handlePopRoute();
+  await tester.pump();
   await settle(tester);
   return handled;
 }

@@ -130,5 +130,6 @@ class _AppBootstrapState extends State<AppBootstrap>
     bootstrapError: error?.toString(),
     onRetry: _initialize,
     television: device.television,
+    version: device.version,
   );
 }

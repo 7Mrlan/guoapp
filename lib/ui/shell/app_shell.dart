@@ -76,7 +76,7 @@ class _AppShellState extends State<AppShell> {
   void _back() {
     final navigator = _navigator;
     if (navigator != null && navigator.canPop()) {
-      navigator.pop();
+      navigator.maybePop();
       return;
     }
     if (_tab == AppTab.explore) _explore.currentState?.refresh();

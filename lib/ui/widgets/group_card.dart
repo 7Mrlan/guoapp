@@ -24,6 +24,7 @@ class SettingsTile extends StatelessWidget {
     this.value,
     this.trailing,
     this.onTap,
+    this.enabled = true,
   });
   final String title;
   final String? subtitle;
@@ -31,6 +32,7 @@ class SettingsTile extends StatelessWidget {
   final String? value;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +77,7 @@ class SettingsTile extends StatelessWidget {
                   ],
                 )),
       onTap: onTap,
+      enabled: enabled,
     );
   }
 }

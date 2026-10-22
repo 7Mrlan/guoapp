@@ -13,12 +13,14 @@ class AppScope extends InheritedWidget {
     required this.television,
     this.desktop = false,
     this.systemColorAvailable = false,
+    this.version = '',
     required super.child,
   });
   final AppRepository repository;
   final bool television;
   final bool desktop;
   final bool systemColorAvailable;
+  final String version;
 
   static AppScope of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppScope>()!;
@@ -35,5 +37,6 @@ class AppScope extends InheritedWidget {
       repository != oldWidget.repository ||
       television != oldWidget.television ||
       desktop != oldWidget.desktop ||
-      systemColorAvailable != oldWidget.systemColorAvailable;
+      systemColorAvailable != oldWidget.systemColorAvailable ||
+      version != oldWidget.version;
 }
