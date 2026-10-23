@@ -135,11 +135,15 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     unawaited(widget.store.setPlayerWide(_wide).catchError((Object _) {}));
   }
 
+  bool get _filled => _fullscreen || _wide && !_selecting;
+
   void _back() {
     if (_fullscreen) {
       unawaited(_toggleFullscreen());
     } else if (_selecting) {
       _endSelection();
+    } else if (_wide) {
+      _toggleWide();
     } else {
       unawaited(Navigator.maybePop(context));
     }
@@ -258,7 +262,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       data: dark,
       child: ClipRRect(
         key: _surfaceKey,
-        borderRadius: BorderRadius.circular(_fullscreen ? 0 : 16),
+        borderRadius: BorderRadius.circular(_filled ? 0 : 16),
         child: ColoredBox(
           color: Colors.black,
           child: PlayerSurface(
@@ -277,7 +281,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     final panel = _roomy && (!_wide || _selecting);
     if (!panel) _revealed = -1;
     return PopScope(
-      canPop: !_fullscreen && !_selecting,
+      canPop: !_fullscreen && !_selecting && !_wide,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _back();
       },
@@ -287,10 +291,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
           autofocus: true,
           onKeyEvent: _key,
           child: Scaffold(
-            backgroundColor: _fullscreen
-                ? Colors.black
-                : theme.colorScheme.surface,
-            body: _fullscreen
+            backgroundColor: _filled ? Colors.black : theme.colorScheme.surface,
+            body: _filled
                 ? surface
                 : SafeArea(
                     child: ListenableBuilder(

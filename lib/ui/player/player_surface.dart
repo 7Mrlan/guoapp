@@ -46,8 +46,11 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   final _links = {for (final popup in _Popup.values) popup: LayerLink()};
   Timer? _hideTimer;
+  Timer? _pointerTimer;
   Timer? _closeTimer;
   bool _visible = true;
+  bool _overBar = false;
+  bool _pointer = false;
   _Popup? _popup;
   double? _seekValue;
   double? _seekTarget;
@@ -84,23 +87,18 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
     }
     _subscriptions.add(
       stream.playing.listen((playing) {
-        if (playing) {
-          _scheduleHide();
-        } else {
-          _show();
-        }
+        if (playing) _scheduleHide();
         _refresh();
       }),
     );
-    widget.hint.addListener(_hinted);
   }
 
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _pointerTimer?.cancel();
     _closeTimer?.cancel();
     _seekTimer?.cancel();
-    widget.hint.removeListener(_hinted);
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());
     }
@@ -111,15 +109,12 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
     if (mounted) setState(() {});
   }
 
-  void _hinted() {
-    if (widget.hint.value.isNotEmpty) _show();
-  }
-
   void _scheduleHide() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 3), () {
+    _hideTimer = Timer(const Duration(seconds: 1), () {
       final state = _session.player.state;
       if (!mounted ||
+          _overBar ||
           _popup != null ||
           _seekValue != null ||
           !state.playing ||
@@ -128,6 +123,14 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
         return;
       }
       setState(() => _visible = false);
+    });
+  }
+
+  void _movePointer() {
+    if (!_pointer) setState(() => _pointer = true);
+    _pointerTimer?.cancel();
+    _pointerTimer = Timer(const Duration(seconds: 1), () {
+      if (mounted) setState(() => _pointer = false);
     });
   }
 
@@ -177,8 +180,10 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
           _visible || !state.playing || state.buffering || !_session.ready;
       final popup = visible ? _popup : null;
       return MouseRegion(
-        onHover: (_) => _show(),
-        cursor: visible ? MouseCursor.defer : SystemMouseCursors.none,
+        onHover: (_) => _movePointer(),
+        cursor: visible || _pointer
+            ? MouseCursor.defer
+            : SystemMouseCursors.none,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -196,7 +201,6 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
               onTap: () {
                 widget.onSurface();
                 _session.togglePlayback();
-                _show();
               },
               onDoubleTap: widget.onFullscreen,
             ),
@@ -214,6 +218,21 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
                   duration: const Duration(milliseconds: 180),
                   child: _controls(context),
                 ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 80,
+              child: MouseRegion(
+                hitTestBehavior: HitTestBehavior.translucent,
+                onEnter: (_) => _overBar = true,
+                onHover: (_) => _show(),
+                onExit: (_) {
+                  _overBar = false;
+                  _scheduleHide();
+                },
               ),
             ),
             if (popup != null)
