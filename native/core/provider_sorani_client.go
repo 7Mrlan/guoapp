@@ -97,7 +97,6 @@ func (client *soraniAPIClient) get(ctx context.Context, route string, query url.
 	if d.limiter != nil {
 		d.limiter.observe(request, response)
 	}
-	observeSourceResponse(ctx, response)
 	blocked := catalogResponseBlockReason(response, data) != ""
 	if response.StatusCode < 200 || response.StatusCode >= 300 || blocked {
 		return nil, d.catalogResponseError(request, response, data)

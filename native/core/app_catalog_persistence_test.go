@@ -311,12 +311,8 @@ func TestNativeCatalogSaveFailureRetriesWithoutAdvancing(t *testing.T) {
 	if cursor := restarted.downloader.hongguoCatalogSnapshot().Feeds["category:short_play"]; cursor.Offset != 18 || len(restarted.catalogs["hongguo|short_play"]) != 2 {
 		t.Fatal("restart resumed an offset whose data had not been saved")
 	}
-	if status := restarted.sourceStatus(sourceHongguo); status.Stage != "上次保存未完成" || restarted.nativeCached("hongguo|short_play").Fresh {
-		t.Fatal("restart hid the interrupted save", status)
-	}
-	status, err := engine.startSourceTask(sourceHongguo, "retrySave", nativeDrama{})
-	if err != nil || status.StorageError != "" || len(offsets) != 2 {
-		t.Fatal("save retry failed or issued network requests", err, status)
+	if retried, err := engine.retryCatalogSave(); !retried || err != nil || len(offsets) != 2 {
+		t.Fatal("save retry failed or issued network requests", retried, err)
 	}
 	restarted = reopenCatalogEngine(t, engine.directory, transport)
 	if len(restarted.catalogs["hongguo|short_play"]) != 3 || restarted.downloader.hongguoCatalogSnapshot().Feeds["category:short_play"].Offset != 36 {
@@ -405,60 +401,6 @@ func TestNativeCatalogMetadataSaveExcludesInFlightCursor(t *testing.T) {
 	restarted = reopenCatalogEngine(t, engine.directory, transport)
 	if restarted.downloader.hongguoCatalogSnapshot().Feeds["short_play"].Offset != 36 || len(restarted.catalogs[sourceHongguo]) != 6 {
 		t.Fatal("completed page was not saved with its cursor")
-	}
-}
-
-func TestNativeSourceRecordSaveFailureAndRetryDuringBackoff(t *testing.T) {
-	var requests atomic.Int32
-	engine := sourceFixtureEngine(t, func(request *http.Request) (*http.Response, error) {
-		requests.Add(1)
-		return nil, errors.New("network forbidden")
-	})
-	engine.changeSourceRecord(sourceHongguo, func(record *nativeSourceRecord) {
-		record.Stage = "已完成"
-		record.Health = &nativeSourceHealth{State: "ok", Sample: "原诊断"}
-	})
-	path := filepath.Join(engine.directory, "sources.json")
-	if err := os.Rename(path, path+".saved"); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(path, 0700); err != nil {
-		t.Fatal(err)
-	}
-	engine.changeSourceRecord(sourceHongguo, func(record *nativeSourceRecord) {
-		record.RetryAt = time.Now().Add(time.Minute)
-		record.Health = &nativeSourceHealth{State: "catalogOnly", Sample: "新诊断"}
-	})
-	status, err := engine.startSourceTask(sourceHongguo, "retrySave", nativeDrama{})
-	if err != nil || status.StorageError == "" || status.Stage != "等待保存" || status.Health.Sample != "新诊断" || requests.Load() != 0 {
-		t.Fatal("failed task persistence was hidden or blocked by network cooldown", err, status)
-	}
-	if err := os.Rename(path, path+".blocked"); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Rename(path+".saved", path); err != nil {
-		t.Fatal(err)
-	}
-	status, err = engine.startSourceTask(sourceHongguo, "retrySave", nativeDrama{})
-	if err != nil || status.StorageError != "" || status.Stage != "已完成" || requests.Load() != 0 {
-		t.Fatal("task record retry did not recover", err, status)
-	}
-	restarted := reopenCatalogEngine(t, engine.directory, nil)
-	if restarted.sourceStatus(sourceHongguo).Health.Sample != "新诊断" {
-		t.Fatal("retry did not save the new health report")
-	}
-	engine.mu.Lock()
-	record := engine.sourceRecords[sourceHongguo]
-	record.Stage = strings.Repeat("x", nativeSourceMaxBytes)
-	engine.sourceRecords[sourceHongguo] = record
-	err = engine.saveSourceRecordsLocked()
-	engine.mu.Unlock()
-	if !errors.Is(err, errNativeSourceLimit) || engine.sourceStatus(sourceHongguo).StorageError == "" {
-		t.Fatal("oversized task records were silently dropped", err)
-	}
-	restarted = reopenCatalogEngine(t, engine.directory, nil)
-	if restarted.sourceStatus(sourceHongguo).Health.Sample != "新诊断" {
-		t.Fatal("oversized records replaced the previous saved report")
 	}
 }
 

@@ -4,12 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -114,66 +112,6 @@ spareLine = Vx.map(Vx.range(1, 3), function () { return location.protocol + '//'
 		if !found {
 			t.Fatalf("transit discovery missed %s in %v", site, sites)
 		}
-	}
-}
-
-func TestProviderCatalogUpdateDefaultsToFiftyYeguoPostPages(t *testing.T) {
-	var pages []string
-	engine := sourceFixtureEngine(t, func(request *http.Request) (*http.Response, error) {
-		if request.URL.Host != "api.yeguo.test" || request.URL.Path != "/api/theater/exploreList" {
-			t.Fatalf("unexpected yeguo catalog request: %s", request.URL.String())
-		}
-		if request.Method != http.MethodPost {
-			t.Fatalf("yeguo catalog must use POST for pagination, got %s", request.Method)
-		}
-		if err := request.ParseForm(); err != nil {
-			t.Fatal(err)
-		}
-		page := request.Form.Get("page")
-		pages = append(pages, page)
-		body := fmt.Sprintf(`{"status":"1","data":{"list":[{"video_id":"8%s","title":"野果默认分页%s","description":"完整资料","episode_count":"6","serialize_status":"2"}],"page":%s,"limit":1,"total":50,"has_more":%q}}`, page, page, page, map[bool]string{true: "1", false: "0"}[page != "50"])
-		return sourceFixtureResponse(request, http.StatusOK, body), nil
-	})
-	engine.downloader.yeguoClient().access = &yeguoAccess{base: "https://api.yeguo.test", identifier: "fixture-trace", loadedAt: time.Now()}
-
-	if err := engine.updateSource(context.Background(), sourceYeguo, "update"); err != nil {
-		t.Fatal(err)
-	}
-	if len(pages) != 50 || pages[0] != "1" || pages[49] != "50" {
-		t.Fatalf("default source update did not request 50 pages: %v", pages)
-	}
-	page := engine.nativeCached(sourceYeguo)
-	if len(page.Items) != 50 || page.Page != 50 || page.HasMore {
-		t.Fatalf("wrong yeguo source cache after default update: %+v", page)
-	}
-}
-
-func TestProviderCatalogUpdateKeepsSinglePageContinuation(t *testing.T) {
-	var pages []string
-	engine := sourceFixtureEngine(t, func(request *http.Request) (*http.Response, error) {
-		if request.URL.Host != "api.huangju.test" {
-			t.Fatalf("unexpected host: %s", request.URL.Host)
-		}
-		if request.URL.Path == "/auth/guest" {
-			return sourceFixtureResponse(request, http.StatusOK, `{"token":"guest-token"}`), nil
-		}
-		if request.URL.Path != "/dramas" {
-			t.Fatalf("unexpected path: %s", request.URL.Path)
-		}
-		page := request.URL.Query().Get("page")
-		pages = append(pages, page)
-		return sourceFixtureResponse(request, http.StatusOK, fmt.Sprintf(`{"items":[{"id":%q,"slug":"page-%s","title":"剧果分页%s","description":"完整资料","totalEpisodes":6}],"page":%s,"pageSize":1,"total":60}`, page, page, page, page)), nil
-	})
-	engine.downloader.cfg.HuangjuAPIURL = "https://api.huangju.test"
-	engine.downloader.cfg.HuangjuURL = "https://huangju.test"
-	engine.catalogs[sourceHuangju] = []nativeDrama{{ID: "huangju:existing-100", Source: sourceHuangju, Title: "已有剧果缓存"}}
-	engine.catalogStates[sourceHuangju] = nativeCatalogState{Page: 7, HasMore: true}
-
-	if err := engine.updateSource(context.Background(), sourceHuangju, "more"); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(pages, []string{"8"}) {
-		t.Fatalf("ordinary more should keep one-page continuation: %v", pages)
 	}
 }
 

@@ -13,7 +13,6 @@ import 'danmaku_models.dart';
 import 'background_downloads.dart';
 import 'local_store.dart';
 import 'app_build.dart';
-import 'source_status.dart';
 import 'ranking_models.dart';
 import 'cover_decoder.dart';
 import 'catalog_updates.dart';
@@ -107,15 +106,6 @@ abstract class AppRepository {
     bool force = false,
   }) async => const [CatalogCategory.all];
   bool get supportsSourceManagement => false;
-  Future<SourceStatus> sourceStatus(String source) async =>
-      SourceStatus.fromJson({'source': source});
-  Future<SourceStatus> startSourceJob(
-    String source,
-    String operation, {
-    Drama? drama,
-  }) async => throw AppFailure('当前环境不支持站源管理');
-  Future<SourceStatus> cancelSourceJob(String source) async =>
-      throw AppFailure('当前环境不支持站源管理');
   Future<List<String>> suggestions(String query) async => const [];
   Future<Map<String, dynamic>> storage() async => {};
   Future<String> downloadDirectory() async =>
@@ -376,39 +366,6 @@ class NativeRepository extends AppRepository {
     }),
   );
 
-  @override
-  Future<SourceStatus> sourceStatus(String source) async =>
-      SourceStatus.fromJson(
-        await _call({'action': 'sourceStatus', 'source': source}),
-      );
-
-  @override
-  Future<SourceStatus> startSourceJob(
-    String source,
-    String operation, {
-    Drama? drama,
-  }) async {
-    _authorize(source);
-    if (drama != null && drama.source != source) throw AppFailure('站源与剧集不匹配');
-    final epoch = access?.profileEpoch;
-    await BackgroundDownloads.ensureStarted();
-    if (epoch != access?.profileEpoch) throw AppFailure('用户已切换，请重新操作');
-    return SourceStatus.fromJson(
-      await _call({
-        'action': 'sourceJob',
-        'source': source,
-        'command': operation,
-        if (drama != null) 'drama': drama.toJson(),
-      }),
-    );
-  }
-
-  @override
-  Future<SourceStatus> cancelSourceJob(String source) async =>
-      SourceStatus.fromJson(
-        await _call({'action': 'cancelSourceJob', 'source': source}),
-      );
-
   void _authorize(String source, {bool download = false}) {
     if (!SourceSite.isAvailable(source)) {
       throw AppFailure('当前版本不包含此站源');
@@ -506,14 +463,7 @@ class NativeRepository extends AppRepository {
           action == 'danmaku') {
         _authorize('hongguo');
       }
-      if ({
-        'catalog',
-        'cached',
-        'categories',
-        'sourceStatus',
-        'sourceJob',
-        'cancelSourceJob',
-      }.contains(action)) {
+      if ({'catalog', 'cached', 'categories'}.contains(action)) {
         _authorize(input['source'] as String);
       }
       if ({

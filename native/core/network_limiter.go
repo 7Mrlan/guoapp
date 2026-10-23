@@ -262,7 +262,6 @@ func (d *Downloader) doPreparedCatalogRequest(request *http.Request, timeout tim
 		return nil, err
 	}
 	d.limiter.observe(request, response)
-	observeSourceResponse(request.Context(), response)
 	response.Body = &limitedResponseBody{ReadCloser: response.Body, release: func() { cancel(); release() }}
 	return response, nil
 }

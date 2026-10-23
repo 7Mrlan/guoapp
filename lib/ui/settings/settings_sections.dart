@@ -10,10 +10,10 @@ import '../../resource_settings_editor.dart';
 import '../app_scope.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
-import '../widgets/status_view.dart';
 import 'appearance_settings.dart';
 import 'diary_view.dart';
 import 'settings_rows.dart';
+import 'sources_view.dart';
 import 'storage_view.dart';
 
 enum SettingsGroup {
@@ -162,21 +162,16 @@ class SettingsSection extends StatelessWidget {
     final settings = editor.settings;
     final editable = settings != null && !editor.saving;
     return [
-      SettingsCard(
-        children: [
-          SettingsTile(
-            title: '站源管理',
-            subtitle: '独立更新、连接与播放检测',
-            onTap: () => open(
-              '站源管理',
-              (_) => const StatusView(
-                title: '「站源管理」正在重建',
-                icon: Icons.tune_rounded,
-              ),
+      if (allSourcesEnabled)
+        SettingsCard(
+          children: [
+            SettingsTile(
+              title: '站源管理',
+              subtitle: '开启或关闭站源',
+              onTap: () => open('站源管理', (_) => SourcesView(store: store)),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       SettingsCard(
         children: [
           ?_editorError(),

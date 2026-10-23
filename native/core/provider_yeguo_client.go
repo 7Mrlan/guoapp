@@ -299,7 +299,6 @@ func (client *yeguoAPIClient) do(ctx context.Context, request *http.Request, tim
 	if client.downloader.limiter != nil {
 		client.downloader.limiter.observe(request, response)
 	}
-	observeSourceResponse(ctx, response)
 	response.Body = &limitedResponseBody{ReadCloser: response.Body, release: func() { cancel(); release() }}
 	return response, nil
 }

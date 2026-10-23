@@ -253,11 +253,6 @@ func (engine *nativeEngine) writeCatalogDiskLocked() error {
 		err = writeNativeCacheFile(filepath.Join(engine.directory, "catalogs.json"), body)
 	}
 	engine.catalogSaveError = nativeSaveError("剧库", err)
-	if err == nil {
-		engine.finishCatalogSaveLocked()
-	} else {
-		engine.markCatalogSavePendingLocked()
-	}
 	return engine.catalogSaveError
 }
 

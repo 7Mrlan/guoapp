@@ -1,5 +1,7 @@
+import 'package:duanju_app/app_build.dart';
 import 'package:duanju_app/ui/settings/appearance_settings.dart';
 import 'package:duanju_app/ui/settings/settings_page.dart';
+import 'package:duanju_app/ui/settings/sources_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -98,14 +100,18 @@ void main() {
     expect(repository.savedResources.single.catalogIntervalMs, 1000);
     expect(repository.savedResources.single.catalogConcurrency, 3);
 
-    await tester.tap(find.text('站源管理'));
-    await settle(tester);
-    expect(find.text('「站源管理」正在重建'), findsOneWidget);
-    expect(_groupItem('sources'), findsOneWidget);
+    if (allSourcesEnabled) {
+      await tester.tap(find.text('站源管理'));
+      await settle(tester);
+      expect(find.byType(SourcesView), findsOneWidget);
+      expect(_groupItem('sources'), findsOneWidget);
 
-    await systemBack(tester);
-    expect(find.text('「站源管理」正在重建'), findsNothing);
-    expect(find.text('目录请求间隔'), findsOneWidget);
+      await systemBack(tester);
+      expect(find.byType(SourcesView), findsNothing);
+      expect(find.text('目录请求间隔'), findsOneWidget);
+    } else {
+      expect(find.text('站源管理'), findsNothing);
+    }
 
     await systemBack(tester);
     expect(find.byType(SettingsPage), findsNothing);

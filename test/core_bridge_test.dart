@@ -17,8 +17,6 @@ List<Future<Object?> Function()> _requests(
     () => repository.catalog(drama.source),
     () => repository.cached(drama.source),
     () => repository.categories(drama.source),
-    () => repository.sourceStatus(drama.source),
-    () => repository.startSourceJob(drama.source, 'update'),
     () => repository.detail(drama),
     () => repository.cover(drama),
     () => repository.resolve(drama, episode),

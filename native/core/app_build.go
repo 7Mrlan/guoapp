@@ -46,12 +46,8 @@ func nativeAuthorizeInput(input nativeInput) error {
 		if !found || !nativeSourceAvailable(board.Source) {
 			return errNativeBuildSource
 		}
-	case "catalog", "cached", "categories", "sourceStatus", "sourceJob", "cancelSourceJob":
+	case "catalog", "cached", "categories":
 		if !nativeSourceAvailable(input.Source) {
-			return errNativeBuildSource
-		}
-		if input.Action == "sourceJob" && input.Drama.ID != "" &&
-			(!nativeDramaAvailable(input.Drama) || sourceFromDramaID(input.Drama.ID) != canonicalProviderSource(input.Source)) {
 			return errNativeBuildSource
 		}
 	case "cover", "prepareCover", "detail", "metadata", "followCheck", "resolve", "preload", "enqueueDownloads", "localPlayback":

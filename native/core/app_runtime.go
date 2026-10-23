@@ -163,15 +163,12 @@ type nativeEngine struct {
 	hongguoCatalog   *hongguoCatalogState
 	recommendations  map[string]nativeRecommendationState
 	catalogSaveError error
-	sourceSaveError  error
 	covers           *nativeCoverCache
 	stream           *nativeStreamServer
 	playbacks        map[string]nativePlaybackChoice
 	playbackMu       sync.Mutex
 	playbackSequence int64
 	playbackCancel   context.CancelFunc
-	sourceTasks      map[string]*nativeSourceTask
-	sourceRecords    map[string]nativeSourceRecord
 	sourceCatalogMu  sync.Mutex
 	sourceCatalogs   map[string]chan struct{}
 }
@@ -277,7 +274,6 @@ func newNativeEngine(directory string) (*nativeEngine, error) {
 	engine.loadResourceSettings()
 	d.loadRankingCache()
 	engine.loadCatalogCache()
-	engine.loadSourceRecords()
 	engine.covers = newNativeCoverCache(directory, d)
 	engine.downloads = newNativeDownloads(engine)
 	return engine, nil
@@ -304,26 +300,6 @@ func NativeRequest(raw string) (result string) {
 		if errors.As(err, &backoff) {
 			envelope["code"] = "source_blocked"
 			envelope["retryAt"] = backoff.until
-		}
-		source := canonicalProviderSource(input.Source)
-		if source == "" {
-			source = sourceFromDramaID(input.Drama.ID)
-		}
-		if !errors.Is(err, context.Canceled) && (input.Action == "catalog" || input.Action == "detail" || input.Action == "resolve") {
-			nativeState.Lock()
-			engine := nativeState.engine
-			nativeState.Unlock()
-			if engine != nil && nativeSourceAvailable(source) {
-				engine.changeSourceRecord(source, func(record *nativeSourceRecord) {
-					record.Error = publicError(err).Error()
-					if backoff != nil {
-						record.RetryAt = backoff.until
-					}
-					if !record.Running {
-						record.Stage, record.FinishedAt = "访问失败", time.Now()
-					}
-				})
-			}
 		}
 	} else {
 		envelope["data"] = data
@@ -441,12 +417,6 @@ func nativeDispatch(input nativeInput) (any, error) {
 	case "categories":
 		items, err := engine.nativeCategories(ctx, input.Source, input.Force)
 		return map[string]any{"items": items}, err
-	case "sourceStatus":
-		return engine.sourceStatus(input.Source), nil
-	case "sourceJob":
-		return engine.startSourceTask(input.Source, input.Command, input.Drama)
-	case "cancelSourceJob":
-		return engine.cancelSourceTask(input.Source), nil
 	case "cover":
 		return engine.loadCover(ctx, input.Drama, input.Force)
 	case "prepareCover":
