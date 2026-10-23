@@ -137,6 +137,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final opener = _opener;
     _opener = null;
     setState(() => _subpage = null);
+    if (!AppScope.of(context).television) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (opener != null && opener.context != null) revealFocus(opener);
     });
@@ -177,7 +178,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   KeyEventResult _onDetailKey(KeyEvent event) {
-    if (event is KeyUpEvent ||
+    if (!AppScope.of(context).television ||
+        event is KeyUpEvent ||
         event.logicalKey != LogicalKeyboardKey.arrowLeft ||
         textFieldKeepsKey(event.logicalKey)) {
       return KeyEventResult.ignored;

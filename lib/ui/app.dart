@@ -45,13 +45,17 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    FocusManager.instance.addEarlyKeyEventHandler(_leaveTextField);
+    FocusManager.instance
+      ..addEarlyKeyEventHandler(_blockKeyboardFocus)
+      ..addEarlyKeyEventHandler(_leaveTextField);
     _loadSystemColor();
   }
 
   @override
   void dispose() {
-    FocusManager.instance.removeEarlyKeyEventHandler(_leaveTextField);
+    FocusManager.instance
+      ..removeEarlyKeyEventHandler(_blockKeyboardFocus)
+      ..removeEarlyKeyEventHandler(_leaveTextField);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -66,6 +70,27 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
     if (mounted && color != _systemColor) {
       setState(() => _systemColor = color);
     }
+  }
+
+  static final _focusKeys = {
+    LogicalKeyboardKey.arrowUp,
+    LogicalKeyboardKey.arrowDown,
+    LogicalKeyboardKey.arrowLeft,
+    LogicalKeyboardKey.arrowRight,
+    LogicalKeyboardKey.enter,
+    LogicalKeyboardKey.numpadEnter,
+    LogicalKeyboardKey.space,
+    LogicalKeyboardKey.select,
+    LogicalKeyboardKey.gameButtonA,
+  };
+
+  KeyEventResult _blockKeyboardFocus(KeyEvent event) {
+    if (_television) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    return key == LogicalKeyboardKey.tab ||
+            focusedTextField() == null && _focusKeys.contains(key)
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
   }
 
   KeyEventResult _leaveTextField(KeyEvent event) {
@@ -146,7 +171,7 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => FocusManager.instance.highlightStrategy = television
           ? FocusHighlightStrategy.alwaysTraditional
-          : FocusHighlightStrategy.automatic,
+          : FocusHighlightStrategy.alwaysTouch,
     );
     return MaterialApp(
       navigatorKey: _navigator,
