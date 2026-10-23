@@ -473,12 +473,15 @@ class _GroupItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
     final television = AppScope.of(context).television;
-    final item = Material(
-      color: selected ? colors.secondaryContainer : Colors.transparent,
-      shape: const StadiumBorder(),
-      clipBehavior: Clip.antiAlias,
+    final item = FocusPill(
+      focusNode: focusNode,
+      selected: selected,
+      textStyle: theme.textTheme.titleSmall?.copyWith(
+        fontSize: 15,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        color: theme.colorScheme.onSurface,
+      ),
       child: InkWell(
         focusNode: focusNode,
         autofocus: autofocus,
@@ -491,14 +494,7 @@ class _GroupItem extends StatelessWidget {
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           alignment: Alignment.centerLeft,
-          child: Text(
-            label,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontSize: 15,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? colors.onSecondaryContainer : colors.onSurface,
-            ),
-          ),
+          child: Text(label),
         ),
       ),
     );

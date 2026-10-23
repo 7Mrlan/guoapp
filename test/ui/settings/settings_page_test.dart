@@ -121,16 +121,27 @@ void main() {
     await openSettings(tester);
     Finder label(String name, String text) =>
         find.descendant(of: _groupItem(name), matching: find.text(text));
-    bool highlighted(String name) =>
-        tester
-            .widget<Material>(
-              find.descendant(
-                of: _groupItem(name),
-                matching: find.byType(Material),
-              ),
-            )
-            .color !=
-        Colors.transparent;
+    Finder pill(String name) =>
+        find.descendant(of: _groupItem(name), matching: find.byType(FocusPill));
+    Color? fill(String name) =>
+        (tester
+                    .widget<AnimatedContainer>(
+                      find.descendant(
+                        of: pill(name),
+                        matching: find.byType(AnimatedContainer),
+                      ),
+                    )
+                    .decoration!
+                as ShapeDecoration)
+            .color;
+    double scale(String name) => tester
+        .widget<AnimatedScale>(
+          find.descendant(of: pill(name), matching: find.byType(AnimatedScale)),
+        )
+        .scale;
+    final colors = Theme.of(
+      tester.element(_groupItem('appearance')),
+    ).colorScheme;
     expect(focusHolds(tester, label('appearance', '外观')), isTrue);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
@@ -138,8 +149,10 @@ void main() {
     await settle(tester);
     expect(focusHolds(tester, label('download', '下载')), isTrue);
     expect(find.text('默认画质'), findsOneWidget);
-    expect(highlighted('download'), isTrue);
-    expect(highlighted('appearance'), isFalse);
+    expect(fill('download'), colors.primary);
+    expect(scale('download'), 1.06);
+    expect(fill('appearance')?.a, 0);
+    expect(scale('appearance'), 1);
     expect(
       find.descendant(
         of: _groupItem('download'),
@@ -151,7 +164,8 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await settle(tester);
     expect(focusHolds(tester, find.text('默认画质')), isTrue);
-    expect(highlighted('download'), isTrue);
+    expect(fill('download'), colors.secondaryContainer);
+    expect(scale('download'), 1);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
     await settle(tester);

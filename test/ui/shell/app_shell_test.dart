@@ -1,6 +1,8 @@
 import 'package:duanju_app/ui/explore/explore_page.dart';
+import 'package:duanju_app/ui/mine/mine_page.dart';
 import 'package:duanju_app/ui/settings/appearance_settings.dart';
 import 'package:duanju_app/ui/settings/settings_page.dart';
+import 'package:duanju_app/ui/shell/pending_pages.dart';
 import 'package:duanju_app/ui/widgets/focus_ring.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -135,46 +137,78 @@ void main() {
   });
 
   group('television', () {
-    testWidgets('tabs keep focus and the outline when selected', (
-      tester,
-    ) async {
+    testWidgets('moving across the tabs switches pages', (tester) async {
       await pumpApp(tester, size: televisionSize, mode: 'television');
       tabFocus(tester, 'explore').requestFocus();
       await settle(tester);
 
-      for (final tab in ['mine', 'explore', 'follow']) {
-        final from = _tabs.indexWhere(
-          (name) => tabFocus(tester, name).hasPrimaryFocus,
-        );
-        final to = _tabs.indexOf(tab);
-        for (var step = 0; step < (to - from).abs(); step++) {
-          await tester.sendKeyEvent(
-            to > from
-                ? LogicalKeyboardKey.arrowRight
-                : LogicalKeyboardKey.arrowLeft,
-          );
-          await settle(tester);
-        }
-        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      Color? fill(String tab) =>
+          (tester
+                      .widget<AnimatedContainer>(
+                        find.ancestor(
+                          of: navItem(tab),
+                          matching: find.byType(AnimatedContainer),
+                        ),
+                      )
+                      .decoration!
+                  as ShapeDecoration)
+              .color;
+      double scale(String tab) => tester
+          .widget<AnimatedScale>(
+            find.ancestor(
+              of: navItem(tab),
+              matching: find.byType(AnimatedScale),
+            ),
+          )
+          .scale;
+      final colors = Theme.of(tester.element(navItem('explore'))).colorScheme;
+      const pages = {
+        'explore': ExplorePage,
+        'follow': PendingTabPage,
+        'mine': MinePage,
+      };
+
+      for (final (key, tab) in [
+        (LogicalKeyboardKey.arrowRight, 'follow'),
+        (LogicalKeyboardKey.arrowRight, 'mine'),
+        (LogicalKeyboardKey.arrowLeft, 'follow'),
+        (LogicalKeyboardKey.arrowLeft, 'explore'),
+        (LogicalKeyboardKey.arrowRight, 'follow'),
+        (LogicalKeyboardKey.arrowRight, 'mine'),
+      ]) {
+        await tester.sendKeyEvent(key);
         await settle(tester);
         expect(tabFocus(tester, tab).hasPrimaryFocus, isTrue, reason: tab);
-
-        final ring = find.ancestor(
-          of: navItem(tab),
-          matching: find.byType(FocusOutline),
-        );
-        expect(tester.widget<FocusOutline>(ring).visible, isTrue, reason: tab);
+        expect(find.byType(pages[tab]!).hitTestable(), findsOneWidget);
+        expect(fill(tab), colors.primary, reason: tab);
+        expect(scale(tab), 1.06, reason: tab);
         expect(
-          tester.getTopLeft(
-            find.descendant(
-              of: find.byType(CompositedTransformFollower),
-              matching: find.byType(CustomPaint),
-            ),
-          ),
-          offsetMoreOrLessEquals(tester.getTopLeft(ring), epsilon: 0.5),
+          find.ancestor(of: navItem(tab), matching: find.byType(FocusOutline)),
+          findsNothing,
           reason: tab,
         );
       }
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await settle(tester);
+      expect(fill('mine'), colors.secondaryContainer);
+      expect(scale('mine'), 1);
+      expect(fill('explore')?.a, 0);
+    });
+
+    testWidgets('entering the tabs from a page lands on the current tab', (
+      tester,
+    ) async {
+      await pumpApp(tester, size: televisionSize, mode: 'television');
+      await openTab(tester, 'mine');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await settle(tester);
+      expect(tabFocus(tester, 'mine').hasPrimaryFocus, isFalse);
+
+      tabFocus(tester, 'explore').requestFocus();
+      await settle(tester);
+      expect(tabFocus(tester, 'mine').hasPrimaryFocus, isTrue);
+      expect(find.byType(MinePage).hitTestable(), findsOneWidget);
     });
 
     testWidgets('focus moves from a page back up to the tabs', (tester) async {
@@ -193,7 +227,7 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await settle(tester);
-      expect(_tabs.any((tab) => tabFocus(tester, tab).hasPrimaryFocus), isTrue);
+      expect(tabFocus(tester, 'mine').hasPrimaryFocus, isTrue);
     });
 
     testWidgets('back from another tab returns to explore and its tab', (

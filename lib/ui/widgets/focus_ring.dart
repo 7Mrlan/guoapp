@@ -264,7 +264,8 @@ class _FocusOutlineMotionState extends State<FocusOutlineMotion>
 }
 
 class _MotionPainter extends CustomPainter {
-  _MotionPainter(this.motion) : super(repaint: motion._motion);
+  _MotionPainter(this.motion)
+    : super(repaint: Listenable.merge([motion._motion, _outlineMoving]));
   final _FocusOutlineMotionState motion;
 
   @override
@@ -467,6 +468,67 @@ class _FocusRingState extends State<FocusRing> {
           child: widget.child,
         ),
       ),
+    );
+  }
+}
+
+class FocusPill extends StatelessWidget {
+  const FocusPill({
+    super.key,
+    required this.focusNode,
+    required this.selected,
+    required this.textStyle,
+    required this.child,
+  });
+  final FocusNode focusNode;
+  final bool selected;
+  final TextStyle? textStyle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    const duration = Duration(milliseconds: 120);
+    final colors = Theme.of(context).colorScheme;
+    final television = AppScope.of(context).television;
+    return ListenableBuilder(
+      listenable: focusNode,
+      builder: (context, child) {
+        final focused =
+            television && selected && focusVisible(focusNode.hasPrimaryFocus);
+        final style = DefaultTextStyle.of(context).style.merge(textStyle);
+        return AnimatedScale(
+          scale: focused ? 1.06 : 1,
+          duration: duration,
+          child: AnimatedContainer(
+            duration: duration,
+            decoration: ShapeDecoration(
+              shape: const StadiumBorder(),
+              color: focused
+                  ? colors.primary
+                  : colors.secondaryContainer.withValues(
+                      alpha: selected ? 1 : 0,
+                    ),
+            ),
+            child: Material(
+              type: MaterialType.transparency,
+              shape: const StadiumBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: AnimatedDefaultTextStyle(
+                duration: duration,
+                style: style.copyWith(
+                  color: focused
+                      ? colors.onPrimary
+                      : selected
+                      ? colors.onSecondaryContainer
+                      : style.color,
+                ),
+                child: child!,
+              ),
+            ),
+          ),
+        );
+      },
+      child: child,
     );
   }
 }

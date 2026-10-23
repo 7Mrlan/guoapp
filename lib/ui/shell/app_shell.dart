@@ -44,13 +44,21 @@ class _AppShellState extends State<AppShell> {
   ];
   final _tabFocus = [for (final _ in AppTab.values) FocusNode()];
   final _mineEntry = FocusNode();
+  final _header = FocusNode();
   final _televisionTabs = GlobalKey();
   final _explore = GlobalKey<ExplorePageState>();
   var _tab = AppTab.explore;
   var _headerFocused = false;
+  FocusNode? _lastFocus;
   DownloadOverview? _downloads;
 
   NavigatorState? get _navigator => _navigators[_tab.index].currentState;
+
+  @override
+  void initState() {
+    super.initState();
+    FocusManager.instance.addListener(_followFocus);
+  }
 
   @override
   void didChangeDependencies() {
@@ -63,15 +71,29 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    FocusManager.instance.removeListener(_followFocus);
     for (final node in _tabFocus) {
       node.dispose();
     }
     _mineEntry.dispose();
+    _header.dispose();
     _downloads?.dispose();
     super.dispose();
   }
 
   void _select(AppTab tab) => setState(() => _tab = tab);
+
+  void _followFocus() {
+    final previous = _lastFocus;
+    final focused = _lastFocus = FocusManager.instance.primaryFocus;
+    final index = _tabFocus.indexWhere((node) => node == focused);
+    if (index < 0) return;
+    if (previous?.ancestors.contains(_header) ?? false) {
+      _select(AppTab.values[index]);
+    } else if (index != _tab.index) {
+      _tabFocus[_tab.index].requestFocus();
+    }
+  }
 
   void _back() {
     final navigator = _navigator;
@@ -160,6 +182,7 @@ class _AppShellState extends State<AppShell> {
                       8,
                     ),
                     child: Focus(
+                      focusNode: _header,
                       canRequestFocus: false,
                       skipTraversal: true,
                       onFocusChange: (focused) =>
@@ -472,35 +495,27 @@ class _TelevisionTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
     return Semantics(
       selected: selected,
-      child: FocusRing(
-        radius: 20,
-        child: Material(
-          color: selected ? colors.secondaryContainer : Colors.transparent,
-          shape: const StadiumBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            key: ValueKey('nav-${tab.name}'),
-            focusNode: focusNode,
-            autofocus: tab == AppTab.explore,
-            onTap: onTap,
-            child: Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              alignment: Alignment.center,
-              child: Text(
-                tab.label,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontSize: 16,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected
-                      ? colors.onSecondaryContainer
-                      : colors.onSurfaceVariant,
-                ),
-              ),
-            ),
+      child: FocusPill(
+        focusNode: focusNode,
+        selected: selected,
+        textStyle: theme.textTheme.titleMedium?.copyWith(
+          fontSize: 16,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        child: InkWell(
+          key: ValueKey('nav-${tab.name}'),
+          focusNode: focusNode,
+          autofocus: tab == AppTab.explore,
+          focusColor: Colors.transparent,
+          onTap: onTap,
+          child: Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            alignment: Alignment.center,
+            child: Text(tab.label),
           ),
         ),
       ),
