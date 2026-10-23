@@ -39,16 +39,19 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
   final _navigator = GlobalKey<NavigatorState>();
   Color? _systemColor;
   int? _profileEpoch;
+  var _television = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    FocusManager.instance.addEarlyKeyEventHandler(_leaveTextField);
     _loadSystemColor();
   }
 
   @override
   void dispose() {
+    FocusManager.instance.removeEarlyKeyEventHandler(_leaveTextField);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -65,12 +68,35 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
     }
   }
 
-  KeyEventResult _escape(KeyEvent event) {
-    if (event is! KeyDownEvent ||
-        event.logicalKey != LogicalKeyboardKey.escape) {
+  KeyEventResult _leaveTextField(KeyEvent event) {
+    if (!_television || event is KeyUpEvent) return KeyEventResult.ignored;
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus == null ||
+        focusedTextField() == null ||
+        textFieldKeepsKey(event.logicalKey)) {
       return KeyEventResult.ignored;
     }
-    final context = FocusManager.instance.primaryFocus?.context;
+    final direction = switch (event.logicalKey) {
+      LogicalKeyboardKey.arrowUp => TraversalDirection.up,
+      LogicalKeyboardKey.arrowDown => TraversalDirection.down,
+      LogicalKeyboardKey.arrowLeft => TraversalDirection.left,
+      LogicalKeyboardKey.arrowRight => TraversalDirection.right,
+      _ => null,
+    };
+    return direction != null && focus.focusInDirection(direction)
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
+  }
+
+  KeyEventResult _escape(KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        event.logicalKey != LogicalKeyboardKey.escape &&
+            event.logicalKey != LogicalKeyboardKey.goBack) {
+      return KeyEventResult.ignored;
+    }
+    final context =
+        focusedTextField()?.context ??
+        FocusManager.instance.primaryFocus?.context;
     if (context == null) return KeyEventResult.ignored;
     const intent = DismissIntent();
     final action = Actions.maybeFind<DismissIntent>(context, intent: intent);
@@ -111,6 +137,7 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
     final mode = store?.displayMode ?? 'auto';
     final television =
         mode == 'television' || mode == 'auto' && widget.television;
+    _television = television;
     final systemColor = (store?.followSystemColor ?? true)
         ? _systemColor
         : null;
@@ -146,7 +173,6 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
                 LogicalKeyboardKey.gameButtonA,
                 includeRepeats: false,
               ): ActivateIntent(),
-              SingleActivator(LogicalKeyboardKey.goBack): DismissIntent(),
             },
             child: AppScope(
               repository: widget.repository,

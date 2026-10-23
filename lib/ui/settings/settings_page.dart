@@ -178,7 +178,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   KeyEventResult _onDetailKey(KeyEvent event) {
     if (event is KeyUpEvent ||
-        event.logicalKey != LogicalKeyboardKey.arrowLeft) {
+        event.logicalKey != LogicalKeyboardKey.arrowLeft ||
+        textFieldKeepsKey(event.logicalKey)) {
       return KeyEventResult.ignored;
     }
     final focus = FocusManager.instance.primaryFocus;

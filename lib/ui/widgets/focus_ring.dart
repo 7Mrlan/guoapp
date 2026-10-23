@@ -4,12 +4,32 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 import '../app_scope.dart';
 
 bool focusVisible(bool focused) =>
     focused &&
     FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
+
+EditableTextState? focusedTextField() => FocusManager
+    .instance
+    .primaryFocus
+    ?.context
+    ?.findAncestorStateOfType<EditableTextState>();
+
+bool textFieldKeepsKey(LogicalKeyboardKey key) {
+  final value = focusedTextField()?.textEditingValue;
+  if (value == null) return false;
+  final selection = value.selection;
+  return switch (key) {
+    LogicalKeyboardKey.arrowLeft =>
+      !selection.isCollapsed || selection.extentOffset > 0,
+    LogicalKeyboardKey.arrowRight =>
+      !selection.isCollapsed || selection.extentOffset < value.text.length,
+    _ => false,
+  };
+}
 
 typedef _Outline = ({
   LayerLink link,
