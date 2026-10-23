@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -7,6 +8,7 @@ import '../../drama_details.dart';
 import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
+import '../player/player_page.dart';
 import '../shell/app_shell.dart';
 import '../shell/pending_pages.dart';
 import '../widgets/cover_backdrop.dart';
@@ -230,10 +232,60 @@ class _DetailPageState extends State<DetailPage> {
     ).showSnackBar(SnackBar(content: Text(details.error!)));
   }
 
-  void _play(int index) => openPage<void>(
-    context,
-    (_) => const PendingPage(title: '播放', icon: Icons.play_circle_outline),
-  );
+  Future<void> _play(int index, {bool resume = false}) async {
+    if (defaultTargetPlatform != TargetPlatform.windows ||
+        AppScope.of(context).television) {
+      await openPage<void>(
+        context,
+        (_) => const PendingPage(title: '播放', icon: Icons.play_circle_outline),
+      );
+      return;
+    }
+    final details = _details!;
+    final episode = details.episodes[index];
+    if (episode.vip &&
+        details.drama.source != SourceSite.dsd.id &&
+        await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('这是一集 VIP 内容'),
+                content: const Text('站源可能只提供试看或限制播放。'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('取消'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('尝试播放'),
+                  ),
+                ],
+              ),
+            ) !=
+            true) {
+      return;
+    }
+    if (!mounted || !details.allowed) return;
+    final watch = details.watch;
+    final position =
+        resume && watch?.episode == episode.number && !watch!.finished
+        ? watch.position
+        : 0.0;
+    await Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlayerPage(
+          store: widget.store,
+          detail: DramaDetail(
+            details.drama,
+            details.episodes,
+            warning: details.warning,
+          ),
+          index: index,
+          position: position,
+        ),
+      ),
+    );
+  }
 
   void _download() => openPage<void>(
     context,
@@ -1077,7 +1129,9 @@ class _DetailPageState extends State<DetailPage> {
       child: FilledButton.icon(
         key: const ValueKey('detail-play'),
         focusNode: focusNode,
-        onPressed: _ready ? () => _play(details.resumeIndex) : null,
+        onPressed: _ready
+            ? () => _play(details.resumeIndex, resume: true)
+            : null,
         style: FilledButton.styleFrom(
           minimumSize: Size(0, m.button),
           iconSize: m.buttonIcon,

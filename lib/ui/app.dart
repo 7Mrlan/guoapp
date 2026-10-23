@@ -88,7 +88,9 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
     if (_television) return KeyEventResult.ignored;
     final key = event.logicalKey;
     return key == LogicalKeyboardKey.tab ||
-            focusedTextField() == null && _focusKeys.contains(key)
+            focusedTextField() == null &&
+                !keyboardControlsFocused() &&
+                _focusKeys.contains(key)
         ? KeyEventResult.handled
         : KeyEventResult.ignored;
   }

@@ -18,6 +18,18 @@ EditableTextState? focusedTextField() => FocusManager
     ?.context
     ?.findAncestorStateOfType<EditableTextState>();
 
+class KeyboardControls extends InheritedWidget {
+  const KeyboardControls({super.key, required super.child});
+
+  @override
+  bool updateShouldNotify(KeyboardControls oldWidget) => false;
+}
+
+bool keyboardControlsFocused() =>
+    FocusManager.instance.primaryFocus?.context
+        ?.getInheritedWidgetOfExactType<KeyboardControls>() !=
+    null;
+
 bool textFieldKeepsKey(LogicalKeyboardKey key) {
   final value = focusedTextField()?.textEditingValue;
   if (value == null) return false;

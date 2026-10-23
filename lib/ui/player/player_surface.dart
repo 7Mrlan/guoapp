@@ -1,0 +1,788 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+
+import '../../playback_preferences.dart';
+import '../../playback_session.dart';
+import 'danmaku_overlay.dart';
+
+String formatClock(Duration value) {
+  final seconds = value.inSeconds;
+  String two(int number) => number.toString().padLeft(2, '0');
+  final clock = '${two(seconds ~/ 60 % 60)}:${two(seconds % 60)}';
+  return seconds >= 3600 ? '${seconds ~/ 3600}:$clock' : clock;
+}
+
+enum _Popup { quality, speed, volume }
+
+class PlayerSurface extends StatefulWidget {
+  const PlayerSurface({
+    super.key,
+    required this.session,
+    required this.video,
+    required this.hint,
+    required this.fullscreen,
+    required this.wide,
+    required this.onFullscreen,
+    required this.onWide,
+    required this.onSurface,
+  });
+  final PlaybackSession session;
+  final VideoController video;
+  final ValueListenable<String> hint;
+  final bool fullscreen;
+  final bool wide;
+  final VoidCallback onFullscreen;
+  final VoidCallback onWide;
+  final VoidCallback onSurface;
+
+  @override
+  State<PlayerSurface> createState() => _PlayerSurfaceState();
+}
+
+class _PlayerSurfaceState extends State<PlayerSurface> {
+  final List<StreamSubscription<dynamic>> _subscriptions = [];
+  final _links = {for (final popup in _Popup.values) popup: LayerLink()};
+  Timer? _hideTimer;
+  Timer? _closeTimer;
+  bool _visible = true;
+  _Popup? _popup;
+  double? _seekValue;
+  double? _seekTarget;
+  Timer? _seekTimer;
+
+  PlaybackSession get _session => widget.session;
+
+  void _endSeek() {
+    _seekTimer?.cancel();
+    _seekTarget = null;
+    _seekValue = null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final stream = _session.player.stream;
+    _subscriptions.add(
+      stream.position.listen((position) {
+        final target = _seekTarget;
+        if (target != null && (position.inMilliseconds - target).abs() < 1000) {
+          _endSeek();
+        }
+        _refresh();
+      }),
+    );
+    for (final changes in [
+      stream.duration,
+      stream.buffer,
+      stream.buffering,
+      stream.volume,
+    ]) {
+      _subscriptions.add(changes.listen((_) => _refresh()));
+    }
+    _subscriptions.add(
+      stream.playing.listen((playing) {
+        if (playing) {
+          _scheduleHide();
+        } else {
+          _show();
+        }
+        _refresh();
+      }),
+    );
+    widget.hint.addListener(_hinted);
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    _closeTimer?.cancel();
+    _seekTimer?.cancel();
+    widget.hint.removeListener(_hinted);
+    for (final subscription in _subscriptions) {
+      unawaited(subscription.cancel());
+    }
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  void _hinted() {
+    if (widget.hint.value.isNotEmpty) _show();
+  }
+
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 3), () {
+      final state = _session.player.state;
+      if (!mounted ||
+          _popup != null ||
+          _seekValue != null ||
+          !state.playing ||
+          state.buffering ||
+          _session.boosting) {
+        return;
+      }
+      setState(() => _visible = false);
+    });
+  }
+
+  void _show() {
+    if (!mounted) return;
+    if (!_visible) setState(() => _visible = true);
+    _scheduleHide();
+  }
+
+  void _open(_Popup popup) {
+    _closeTimer?.cancel();
+    if (_popup != popup) setState(() => _popup = popup);
+    _show();
+  }
+
+  void _closeLater() {
+    _closeTimer?.cancel();
+    _closeTimer = Timer(const Duration(milliseconds: 200), _close);
+  }
+
+  void _close() {
+    _closeTimer?.cancel();
+    if (!mounted || _popup == null) return;
+    setState(() => _popup = null);
+    _scheduleHide();
+  }
+
+  Future<void> _change(Future<void> Function() change) async {
+    _close();
+    widget.onSurface();
+    try {
+      await change();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('播放偏好未能保存，请重试')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: _session,
+    builder: (context, _) {
+      final state = _session.player.state;
+      final visible =
+          _visible || !state.playing || state.buffering || !_session.ready;
+      final popup = visible ? _popup : null;
+      return MouseRegion(
+        onHover: (_) => _show(),
+        cursor: visible ? MouseCursor.defer : SystemMouseCursors.none,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Video(
+              controller: widget.video,
+              controls: NoVideoControls,
+              pauseUponEnteringBackgroundMode: false,
+            ),
+            DanmakuOverlay(
+              controller: _session.danmaku,
+              aspectRatio: _session.aspectRatio,
+            ),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                widget.onSurface();
+                _session.togglePlayback();
+                _show();
+              },
+              onDoubleTap: widget.onFullscreen,
+            ),
+            if (_session.ready && state.buffering)
+              const IgnorePointer(
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            if (_session.ready && !state.playing) _pausedMark(),
+            IgnorePointer(
+              ignoring: !visible,
+              child: ExcludeFocus(
+                excluding: !visible,
+                child: AnimatedOpacity(
+                  opacity: visible ? 1 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  child: _controls(context),
+                ),
+              ),
+            ),
+            if (popup != null)
+              Positioned(
+                left: 0,
+                top: 0,
+                child: CompositedTransformFollower(
+                  link: _links[popup]!,
+                  showWhenUnlinked: false,
+                  targetAnchor: Alignment.topCenter,
+                  followerAnchor: Alignment.bottomCenter,
+                  offset: const Offset(0, -6),
+                  child: MouseRegion(
+                    onEnter: (_) => _closeTimer?.cancel(),
+                    onExit: (_) => _closeLater(),
+                    child: _popupBody(context, popup),
+                  ),
+                ),
+              ),
+            _hint(),
+            if (_session.saveWarning case final warning?) _saveWarning(warning),
+            if (_session.loading) _loading(),
+            if (_session.error case final error?) _failure(context, error),
+          ],
+        ),
+      );
+    },
+  );
+
+  Widget _pausedMark() => Positioned(
+    right: 20,
+    bottom: 92,
+    child: IgnorePointer(
+      child: Container(
+        width: 68,
+        height: 68,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: .4),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          Icons.play_arrow_rounded,
+          size: 42,
+          color: Colors.white.withValues(alpha: .9),
+        ),
+      ),
+    ),
+  );
+
+  Widget _controls(BuildContext context) {
+    final state = _session.player.state;
+    final duration = state.duration;
+    final max = duration.inMilliseconds > 0
+        ? duration.inMilliseconds.toDouble()
+        : 1.0;
+    final position = (_seekValue ?? state.position.inMilliseconds.toDouble())
+        .clamp(0.0, max);
+    final colors = Theme.of(context).colorScheme;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const IgnorePointer(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: double.infinity,
+              height: 200,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0x00000000), Color(0xC7000000)],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 6,
+          right: 6,
+          bottom: 52,
+          height: 28,
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 4,
+              activeTrackColor: colors.primary,
+              thumbColor: colors.primary,
+              inactiveTrackColor: Colors.white.withValues(alpha: .25),
+              secondaryActiveTrackColor: Colors.white.withValues(alpha: .4),
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+            ),
+            child: Slider(
+              value: position,
+              max: max,
+              secondaryTrackValue: state.buffer.inMilliseconds.toDouble().clamp(
+                0.0,
+                max,
+              ),
+              semanticFormatterCallback: (value) =>
+                  formatClock(Duration(milliseconds: value.round())),
+              onChangeStart: _session.ready && duration > Duration.zero
+                  ? (_) {
+                      _hideTimer?.cancel();
+                      _seekTimer?.cancel();
+                      _seekTarget = null;
+                    }
+                  : null,
+              onChanged: _session.ready && duration > Duration.zero
+                  ? (value) => setState(() => _seekValue = value)
+                  : null,
+              onChangeEnd: (value) {
+                if (_session.ready && duration > Duration.zero) {
+                  _seekTarget = value;
+                  _seekTimer?.cancel();
+                  _seekTimer = Timer(const Duration(seconds: 2), () {
+                    if (mounted) setState(_endSeek);
+                  });
+                  unawaited(
+                    _session.seekTo(Duration(milliseconds: value.round())),
+                  );
+                } else {
+                  setState(_endSeek);
+                }
+                _scheduleHide();
+              },
+            ),
+          ),
+        ),
+        Positioned(
+          left: 12,
+          right: 12,
+          bottom: 10,
+          height: 48,
+          child: _toolbar(context, position),
+        ),
+      ],
+    );
+  }
+
+  Widget _toolbar(BuildContext context, double position) {
+    final colors = Theme.of(context).colorScheme;
+    final state = _session.player.state;
+    final playing = state.playing;
+    final ready = _session.ready;
+    return Row(
+      children: [
+        _icon(
+          Icons.skip_previous_rounded,
+          '上一集',
+          _session.hasPrevious ? () => unawaited(_session.previous()) : null,
+        ),
+        _icon(
+          playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+          playing ? '暂停' : '播放',
+          ready ? _session.togglePlayback : null,
+          size: 48,
+          iconSize: 30,
+        ),
+        _icon(
+          Icons.skip_next_rounded,
+          '下一集',
+          _session.hasNext ? () => unawaited(_session.next()) : null,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '${formatClock(Duration(milliseconds: position.round()))} / ${formatClock(state.duration)}',
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.white.withValues(alpha: .86),
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        if (_session.danmakuSupported) ...[
+          const SizedBox(width: 4),
+          _icon(
+            _session.danmakuEnabled
+                ? Icons.subtitles_rounded
+                : Icons.subtitles_off_rounded,
+            _session.danmakuEnabled ? '关闭弹幕' : '打开弹幕',
+            () => _change(_session.toggleDanmaku),
+            color: _session.danmakuEnabled ? colors.primary : null,
+          ),
+        ],
+        const Spacer(),
+        _popupTarget(
+          _Popup.quality,
+          _text(
+            _session.qualityLabel,
+            '清晰度',
+            ready && !_session.local ? () => _open(_Popup.quality) : null,
+          ),
+        ),
+        _popupTarget(
+          _Popup.speed,
+          _text(
+            '${_session.speed}x',
+            '倍速',
+            ready ? () => _open(_Popup.speed) : null,
+            bold: true,
+          ),
+        ),
+        _popupTarget(
+          _Popup.volume,
+          _icon(
+            state.volume == 0
+                ? Icons.volume_off_rounded
+                : Icons.volume_up_rounded,
+            state.volume == 0 ? '取消静音' : '静音',
+            () => _session.toggleMute(),
+          ),
+        ),
+        _icon(Icons.picture_in_picture_alt_rounded, '画中画', null),
+        if (!widget.fullscreen)
+          _icon(
+            Icons.width_wide_rounded,
+            widget.wide ? '退出宽屏' : '宽屏',
+            widget.onWide,
+            color: widget.wide ? colors.primary : null,
+          ),
+        _icon(
+          widget.fullscreen
+              ? Icons.fullscreen_exit_rounded
+              : Icons.fullscreen_rounded,
+          widget.fullscreen ? '退出全屏' : '全屏',
+          widget.onFullscreen,
+        ),
+      ],
+    );
+  }
+
+  Widget _popupTarget(_Popup popup, Widget child) {
+    final enabled = popup != _Popup.quality || !_session.local;
+    return CompositedTransformTarget(
+      link: _links[popup]!,
+      child: MouseRegion(
+        onEnter: enabled && _session.ready ? (_) => _open(popup) : null,
+        onExit: (_) => _closeLater(),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _icon(
+    IconData icon,
+    String label,
+    VoidCallback? onPressed, {
+    double size = 44,
+    double iconSize = 24,
+    Color? color,
+  }) => Semantics(
+    label: label,
+    button: true,
+    excludeSemantics: true,
+    child: _HoverScale(
+      enabled: onPressed != null,
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        iconSize: iconSize,
+        color: color ?? Colors.white,
+        disabledColor: Colors.white.withValues(alpha: .36),
+        style: IconButton.styleFrom(
+          fixedSize: Size.square(size),
+          overlayColor: Colors.transparent,
+        ),
+      ),
+    ),
+  );
+
+  Widget _text(
+    String text,
+    String label,
+    VoidCallback? onPressed, {
+    bool bold = false,
+  }) => Semantics(
+    label: label,
+    button: true,
+    child: _HoverScale(
+      enabled: onPressed != null,
+      child: TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          fixedSize: const Size.fromHeight(40),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white.withValues(alpha: .6),
+          overlayColor: Colors.transparent,
+          textStyle: TextStyle(
+            fontSize: 14,
+            fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+        child: Text(text),
+      ),
+    ),
+  );
+
+  Widget _popupBody(BuildContext context, _Popup popup) {
+    final body = switch (popup) {
+      _Popup.volume => _volume(context),
+      _Popup.speed => _options<double>(
+        values: playbackSpeeds.reversed.toList(),
+        selected: _session.speed,
+        label: (value) => '${value}x',
+        onSelected: (value) => _change(() => _session.setSpeed(value)),
+      ),
+      _Popup.quality => _options<int>(
+        values: [..._session.qualities, 0],
+        selected: _session.quality,
+        label: (value) => value == 0 ? '自动' : '${value}P',
+        onSelected: (value) => _change(() => _session.setQuality(value)),
+      ),
+    };
+    return Material(
+      color: const Color(0xE0141414),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(padding: const EdgeInsets.all(6), child: body),
+    );
+  }
+
+  Widget _options<T>({
+    required List<T> values,
+    required T selected,
+    required String Function(T) label,
+    required void Function(T) onSelected,
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    return IntrinsicWidth(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final value in values)
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              hoverColor: Colors.white.withValues(alpha: .14),
+              onTap: () => onSelected(value),
+              child: Container(
+                height: 36,
+                constraints: const BoxConstraints(minWidth: 72),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                alignment: Alignment.center,
+                child: Text(
+                  label(value),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: value == selected
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                    color: value == selected ? colors.primary : Colors.white,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _volume(BuildContext context) {
+    final volume = _session.player.state.volume.clamp(0.0, 100.0);
+    return SizedBox(
+      width: 44,
+      height: 156,
+      child: Column(
+        children: [
+          Text(
+            '${volume.round()}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+          Expanded(
+            child: RotatedBox(
+              quarterTurns: -1,
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 4,
+                  activeTrackColor: Colors.white,
+                  thumbColor: Colors.white,
+                  inactiveTrackColor: Colors.white.withValues(alpha: .25),
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 7,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 12,
+                  ),
+                ),
+                child: Slider(
+                  value: volume,
+                  max: 100,
+                  semanticFormatterCallback: (value) => '音量 ${value.round()}%',
+                  onChanged: _session.setVolume,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _hint() => ValueListenableBuilder(
+    valueListenable: widget.hint,
+    builder: (context, hint, _) {
+      final boosting = _session.boosting;
+      final text = boosting ? '倍速播放中' : hint;
+      if (text.isEmpty) return const SizedBox.shrink();
+      return IgnorePointer(
+        child: Align(
+          alignment: const Alignment(0, -.5),
+          child: Container(
+            padding: boosting
+                ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
+                : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: boosting ? .6 : .72),
+              borderRadius: BorderRadius.circular(boosting ? 10 : 12),
+            ),
+            child: Text(
+              text,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: boosting ? 13 : 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  Widget _saveWarning(String warning) => Positioned(
+    top: 12,
+    left: 12,
+    right: 12,
+    child: Align(
+      alignment: Alignment.topCenter,
+      child: Material(
+        color: const Color(0xE6322424),
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  warning,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+              TextButton(
+                onPressed: _session.saveProgress,
+                child: const Text('重试保存'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _loading() => ColoredBox(
+    color: Colors.black.withValues(alpha: .78),
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text(
+            _session.loadingMessage,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _failure(BuildContext context, String error) {
+    final colors = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: Colors.black.withValues(alpha: .9),
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.play_disabled_rounded,
+                size: 48,
+                color: colors.primary,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '暂时无法播放',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Text(
+                  error,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .78),
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  FilledButton(
+                    onPressed: _session.retry,
+                    child: Text(_session.localFailure ? '重试本地播放' : '重试'),
+                  ),
+                  if (_session.localFailure)
+                    TextButton(
+                      onPressed: _session.switchOnline,
+                      child: const Text('改为在线播放'),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverScale extends StatefulWidget {
+  const _HoverScale({required this.enabled, required this.child});
+  final bool enabled;
+  final Widget child;
+
+  @override
+  State<_HoverScale> createState() => _HoverScaleState();
+}
+
+class _HoverScaleState extends State<_HoverScale> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: (_) => setState(() => _hovered = true),
+    onExit: (_) => setState(() => _hovered = false),
+    child: AnimatedScale(
+      scale: _hovered && widget.enabled ? 1.15 : 1,
+      duration: const Duration(milliseconds: 120),
+      child: widget.child,
+    ),
+  );
+}

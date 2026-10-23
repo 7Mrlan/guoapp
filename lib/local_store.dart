@@ -352,6 +352,7 @@ class LocalStore extends ChangeNotifier {
       ThemeColor.byName(preferences.getString('themeColor')) ??
       ThemeColor.orange;
   bool get sideBarExpanded => preferences.getBool('sideBarExpanded') ?? true;
+  bool get playerWide => preferences.getBool('playerWide') ?? false;
 
   String get source {
     if (locked) return '';
@@ -518,6 +519,10 @@ class LocalStore extends ChangeNotifier {
   });
   Future<void> setSideBarExpanded(bool value) => _queue(() async {
     await preferences.setBool('sideBarExpanded', value);
+    _notify();
+  });
+  Future<void> setPlayerWide(bool value) => _queue(() async {
+    await preferences.setBool('playerWide', value);
     _notify();
   });
   Future<void> setPlaybackPreferences(PlaybackPreferences value) {

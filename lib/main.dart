@@ -3,7 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'app_device.dart';
 import 'core_bridge.dart';
@@ -19,6 +21,10 @@ Future<void> main() async {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setSystemUIOverlayStyle(AppTheme.systemBars(Brightness.dark));
   }
+  if (Platform.isWindows) {
+    await windowManager.ensureInitialized();
+  }
+  MediaKit.ensureInitialized();
   final device = await AppDevice.detect();
   final rendering = Platform.isAndroid
       ? ', 渲染: ${await AppDevice.compatibleRendering() ? 'skia' : 'impeller'}'
