@@ -98,16 +98,56 @@ class DramaSliverGrid extends StatelessWidget {
   }
 }
 
-class AutoLoadMore extends StatelessWidget {
+class AutoLoadMore extends StatefulWidget {
   const AutoLoadMore({super.key, required this.feed, required this.child});
   final DramaFeed feed;
   final Widget child;
 
-  bool _check(ScrollMetrics metrics, int depth) {
-    if (depth == 0 &&
-        metrics.axis == Axis.vertical &&
-        metrics.extentAfter < 600 &&
-        feed.canLoadMore) {
+  @override
+  State<AutoLoadMore> createState() => _AutoLoadMoreState();
+}
+
+class _AutoLoadMoreState extends State<AutoLoadMore> {
+  BuildContext? _scrollable;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.feed.addListener(_feedChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant AutoLoadMore oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.feed == widget.feed) return;
+    oldWidget.feed.removeListener(_feedChanged);
+    widget.feed.addListener(_feedChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.feed.removeListener(_feedChanged);
+    super.dispose();
+  }
+
+  void _feedChanged() {
+    if (!widget.feed.canLoadMore) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final scrollable = _scrollable;
+      if (!mounted || scrollable == null || !scrollable.mounted) return;
+      final state = scrollable.findAncestorStateOfType<ScrollableState>();
+      if (state?.position case final position?
+          when position.hasContentDimensions) {
+        _check(position, 0, scrollable);
+      }
+    });
+  }
+
+  bool _check(ScrollMetrics metrics, int depth, BuildContext? context) {
+    if (depth != 0 || metrics.axis != Axis.vertical) return false;
+    _scrollable = context;
+    final feed = widget.feed;
+    if (metrics.extentAfter < 600 && feed.canLoadMore) {
       WidgetsBinding.instance.addPostFrameCallback((_) => feed.loadMore());
     }
     return false;
@@ -116,12 +156,18 @@ class AutoLoadMore extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       NotificationListener<ScrollMetricsNotification>(
-        onNotification: (notification) =>
-            _check(notification.metrics, notification.depth),
+        onNotification: (notification) => _check(
+          notification.metrics,
+          notification.depth,
+          notification.context,
+        ),
         child: NotificationListener<ScrollUpdateNotification>(
-          onNotification: (notification) =>
-              _check(notification.metrics, notification.depth),
-          child: child,
+          onNotification: (notification) => _check(
+            notification.metrics,
+            notification.depth,
+            notification.context,
+          ),
+          child: widget.child,
         ),
       );
 }

@@ -24,6 +24,7 @@ class SourceCatalog {
   final _library = <String, Drama>{};
 
   static const recommendGenre = 'find_drama';
+  static const topicPrefix = 'tag:';
 
   bool get recommends => source.id == SourceSite.hongguo.id;
 
@@ -36,9 +37,14 @@ class SourceCatalog {
         if (category.id.isNotEmpty && names.add(categoryName(category.name)))
           CatalogCategory(category.id, categoryName(category.name)),
     ];
-    final local = {
-      for (final drama in _library.values) categoryName(drama.category),
-    }.where(names.add).toList()..sort();
+    final topics = remote.any(
+      (category) => category.id.startsWith(topicPrefix),
+    );
+    final local = topics
+        ? const <String>[]
+        : ({
+            for (final drama in _library.values) categoryName(drama.category),
+          }.where(names.add).toList()..sort());
     return [
       CatalogCategory.all,
       ...remote,

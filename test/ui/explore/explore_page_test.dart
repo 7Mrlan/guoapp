@@ -1,3 +1,4 @@
+import 'package:duanju_app/models.dart';
 import 'package:duanju_app/ranking_models.dart';
 import 'package:duanju_app/ui/explore/explore_hero.dart';
 import 'package:duanju_app/ui/detail/detail_page.dart';
@@ -5,6 +6,7 @@ import 'package:duanju_app/ui/widgets/cover_image.dart';
 import 'package:duanju_app/ui/widgets/drama_tile.dart';
 import 'package:duanju_app/ui/widgets/focus_ring.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/app_harness.dart';
@@ -123,6 +125,43 @@ void main() {
     expect(tester.getSize(ring).height, greaterThan(before.height * 1.5));
   });
 
+  testWidgets('a few cached dramas still load the next page', (tester) async {
+    final repository = _SlowCatalog()
+      ..cachedPages['hongguo|short_play'] = CatalogPage([
+        drama('cached', title: '缓存的剧'),
+      ], hasMore: true);
+    await pumpApp(tester, repository: repository);
+
+    await tester.tap(find.text('真人剧'));
+    await tester.pump();
+    expect(find.text('缓存的剧'), findsOneWidget);
+    await settle(tester);
+    await settle(tester);
+    expect(repository.catalogRequests, contains('hongguo|short_play||2'));
+  });
+
+  testWidgets('television keeps focus on a category after choosing it', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      size: televisionSize,
+      mode: 'television',
+      repository: _SlowCatalog(),
+    );
+    final category = Focus.of(tester.element(find.text('真人剧')));
+    category.requestFocus();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(find.text('分类short_play'), findsNothing);
+    await settle(tester);
+    expect(find.text('分类short_play'), findsOneWidget);
+    expect(category.hasPrimaryFocus, isTrue);
+    await settle(tester);
+  });
+
   testWidgets('television back refreshes from content, exits from the top', (
     tester,
   ) async {
@@ -147,4 +186,32 @@ void main() {
     expect(await systemBack(tester), isFalse);
     expect(repository.recommendRequests, hasLength(2));
   });
+}
+
+class _SlowCatalog extends FakeRepository {
+  @override
+  CatalogPage pageFor(String source, String category, String query, int page) =>
+      CatalogPage(
+        super.pageFor(source, category, query, page).items,
+        hasMore: page < 2,
+        page: page,
+      );
+
+  @override
+  Future<CatalogPage> catalog(
+    String source, {
+    int page = 1,
+    String query = '',
+    String category = '',
+    bool force = false,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    return super.catalog(
+      source,
+      page: page,
+      query: query,
+      category: category,
+      force: force,
+    );
+  }
 }

@@ -28,6 +28,7 @@ class ExplorePageState extends State<ExplorePage> {
   ExploreFeed? _explore;
   final _scroll = ScrollController();
   final _search = TextEditingController();
+  final _tabsKey = GlobalKey();
   String _shown = '';
 
   @override
@@ -120,6 +121,7 @@ class ExplorePageState extends State<ExplorePage> {
           horizontal: form == FormFactor.phone ? 0 : inset,
         ),
         child: CategoryTabs<String>(
+          key: _tabsKey,
           options: [
             for (final tab in explore.tabs) ChoiceOption(tab.id, tab.name),
           ],

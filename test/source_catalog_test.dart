@@ -38,6 +38,26 @@ void main() {
     expect(catalog.categories[2].name, 'AI 漫剧');
   });
 
+  test('server topics replace the cached topics', () async {
+    final repository = FakeRepository()
+      ..categoryList = const [
+        CatalogCategory.all,
+        CatalogCategory('short_play', '真人剧'),
+        CatalogCategory('tag:cate_96', '甜宠'),
+        CatalogCategory('tag:cate_1', '都市'),
+      ]
+      ..cachedPages['hongguo|'] = CatalogPage([
+        drama('1', category: '都市'),
+        drama('2', category: '成长'),
+      ]);
+    final catalog = SourceCatalog(repository, SourceSite.hongguo);
+    await catalog.loadCategories();
+    expect(
+      [for (final category in catalog.categories) category.id],
+      ['', 'short_play', 'tag:cate_96', 'tag:cate_1'],
+    );
+  });
+
   test('a cached topic lists every remembered drama in it', () async {
     final repository = _TopicRepository()
       ..cachedPages['hongguo|'] = CatalogPage([

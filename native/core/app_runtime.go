@@ -583,6 +583,10 @@ func (engine *nativeEngine) nativeCatalog(ctx context.Context, input nativeInput
 	var err error
 	switch source {
 	case sourceHongguo:
+		if strings.HasPrefix(category, hongguoTagPrefix) {
+			items, result.HasMore, err = d.fetchHongguoTagPage(ctx, category, page)
+			break
+		}
 		engine.mu.Lock()
 		known := make(map[string]bool, len(engine.catalogs[cacheKey]))
 		for _, drama := range engine.catalogs[cacheKey] {
