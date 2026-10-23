@@ -57,16 +57,8 @@ class MinePage extends StatelessWidget {
     (_) => const PendingPage(title: '下载', icon: Icons.download_rounded),
   );
 
-  Widget _userCard(BuildContext context) => _UserCard(
-    store: store,
-    onTap: () => openPage<void>(
-      context,
-      (_) => const PendingPage(
-        title: '用户管理',
-        icon: Icons.manage_accounts_outlined,
-      ),
-    ),
-  );
+  Widget _userCard(BuildContext context) =>
+      _UserCard(store: store, onTap: () => openUsers(context, store));
 
   Widget _settings(BuildContext context) => _SettingsEntry(
     onTap: () => openPage<void>(context, (_) => SettingsPage(store: store)),
@@ -301,13 +293,7 @@ class MinePage extends StatelessWidget {
                         title: store.profile.name,
                         subtitle:
                             '${store.profile.admin ? '管理员' : '普通用户'} · 切换用户',
-                        onTap: () => openPage<void>(
-                          context,
-                          (_) => const PendingPage(
-                            title: '用户管理',
-                            icon: Icons.manage_accounts_outlined,
-                          ),
-                        ),
+                        onTap: () => openUsers(context, store),
                       ),
                     ),
                     Expanded(

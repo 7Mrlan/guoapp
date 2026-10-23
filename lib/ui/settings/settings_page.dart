@@ -7,6 +7,7 @@ import '../../resource_settings_editor.dart';
 import '../app_scope.dart';
 import '../shell/app_shell.dart';
 import '../shell/pending_pages.dart';
+import '../users/users_view.dart';
 import '../widgets/bar_button.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
@@ -20,9 +21,41 @@ const _themeModes = {'light': '浅色', 'dark': '深色', 'system': '跟随系�
 
 typedef _Subpage = ({String title, WidgetBuilder body});
 
+void openUsers(BuildContext context, LocalStore store) => openPage<void>(
+  context,
+  (context) => settingsSplit(context)
+      ? SettingsPage(store: store, initialGroup: SettingsGroup.users)
+      : Scaffold(
+          appBar: AppBar(title: Text(SettingsGroup.users.label)),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: [
+              UsersView(
+                store: store,
+                open: (title, body) => _openFullPage(context, title, body),
+              ),
+            ],
+          ),
+        ),
+);
+
+void _openFullPage(BuildContext context, String title, WidgetBuilder body) =>
+    openPage<void>(
+      context,
+      (context) => Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: body(context),
+      ),
+    );
+
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, required this.store});
+  const SettingsPage({
+    super.key,
+    required this.store,
+    this.initialGroup = SettingsGroup.appearance,
+  });
   final LocalStore store;
+  final SettingsGroup initialGroup;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -39,7 +72,7 @@ class _SettingsPageState extends State<SettingsPage> {
     traversalEdgeBehavior: TraversalEdgeBehavior.parentScope,
   );
   final _groupFocus = [for (final _ in SettingsGroup.values) FocusNode()];
-  var _group = SettingsGroup.appearance;
+  late var _group = widget.initialGroup;
   _Subpage? _subpage;
   FocusNode? _opener;
   var _detailFocused = false;
@@ -120,13 +153,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _open(String title, WidgetBuilder body) {
     if (!settingsSplit(context)) {
-      openPage<void>(
-        context,
-        (context) => Scaffold(
-          appBar: AppBar(title: Text(title)),
-          body: body(context),
-        ),
-      );
+      _openFullPage(context, title, body);
       return;
     }
     _opener = FocusManager.instance.primaryFocus;

@@ -17,12 +17,13 @@ Future<LocalStore> pumpApp(
   AppRepository? repository,
   Map<String, Object> initial = const {},
   Future<void> Function(LocalStore store)? prepare,
+  Future<String> Function(String pin, String salt)? pinHasher,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  final store = await openStore(initial);
-  await store.setDisplayMode(mode);
+  final store = await openStore(initial, pinHasher);
+  if (!store.locked) await store.setDisplayMode(mode);
   await prepare?.call(store);
   await tester.pumpWidget(
     DuanjuApp(repository: repository ?? FakeRepository(), store: store),

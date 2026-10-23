@@ -2,6 +2,7 @@ import 'package:duanju_app/app_build.dart';
 import 'package:duanju_app/ui/settings/appearance_settings.dart';
 import 'package:duanju_app/ui/settings/settings_page.dart';
 import 'package:duanju_app/ui/settings/sources_view.dart';
+import 'package:duanju_app/ui/users/users_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,7 +57,7 @@ void main() {
 
     await systemBack(tester);
     await openSettingsGroup(tester, '用户');
-    expect(find.text('「用户管理」正在重建'), findsOneWidget);
+    expect(find.byType(UsersView), findsOneWidget);
   });
 
   testWidgets('restricted rows stay visible but greyed out', (tester) async {

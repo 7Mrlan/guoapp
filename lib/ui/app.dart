@@ -11,6 +11,7 @@ import 'app_scope.dart';
 import 'shell/app_shell.dart';
 import 'theme/app_theme.dart';
 import 'theme/system_color.dart';
+import 'users/unlock_page.dart';
 import 'widgets/focus_ring.dart';
 
 class DuanjuApp extends StatefulWidget {
@@ -35,7 +36,9 @@ class DuanjuApp extends StatefulWidget {
 }
 
 class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
+  final _navigator = GlobalKey<NavigatorState>();
   Color? _systemColor;
+  int? _profileEpoch;
 
   @override
   void initState() {
@@ -86,15 +89,25 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final store = widget.store;
-    return store == null
-        ? _application(null)
-        : ListenableBuilder(
-            listenable: store,
-            builder: (_, _) => _application(store),
-          );
+    return ListenableBuilder(
+      listenable: Listenable.merge([?store]),
+      builder: (_, _) => _application(store),
+    );
+  }
+
+  void _resetRoutes(LocalStore? store) {
+    final epoch = store?.profileEpoch;
+    if (epoch == _profileEpoch) return;
+    final previous = _profileEpoch;
+    _profileEpoch = epoch;
+    if (previous == null) return;
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _navigator.currentState?.popUntil((route) => route.isFirst),
+    );
   }
 
   Widget _application(LocalStore? store) {
+    _resetRoutes(store);
     final mode = store?.displayMode ?? 'auto';
     final television =
         mode == 'television' || mode == 'auto' && widget.television;
@@ -109,6 +122,7 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
           : FocusHighlightStrategy.automatic,
     );
     return MaterialApp(
+      navigatorKey: _navigator,
       title: appName,
       debugShowCheckedModeBanner: false,
       scrollBehavior: const FocusOutlineScrollBehavior(),
@@ -164,10 +178,8 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
           error: widget.bootstrapError,
           onRetry: widget.onRetry,
         ),
-        LocalStore(locked: true) => const _BootScreen(
-          error: '当前用户需要验证，用户页面还在重建中',
-        ),
-        _ => AppShell(store: store),
+        LocalStore(locked: true) => UnlockPage(store: store),
+        _ => AppShell(key: ValueKey(store.profileEpoch), store: store),
       },
     );
   }

@@ -8,6 +8,7 @@ import '../../local_store.dart';
 import '../../resource_settings.dart';
 import '../../resource_settings_editor.dart';
 import '../app_scope.dart';
+import '../users/users_view.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
 import 'appearance_settings.dart';
@@ -22,7 +23,7 @@ enum SettingsGroup {
   download('下载', Icons.download_rounded),
   sources('站源', Icons.dns_outlined),
   proxy('代理', Icons.language_rounded),
-  users('用户', Icons.manage_accounts_outlined, placeholder: '用户管理'),
+  users('用户', Icons.manage_accounts_outlined),
   about('关于', Icons.info_outline_rounded),
   diagnostics('诊断', Icons.receipt_long_outlined);
 
@@ -68,6 +69,7 @@ class SettingsSection extends StatelessWidget {
               SettingsGroup.download => _download(context),
               SettingsGroup.sources => _sources(context),
               SettingsGroup.proxy => _proxy(context),
+              SettingsGroup.users => [UsersView(store: store, open: open)],
               SettingsGroup.about => _about(context),
               SettingsGroup.diagnostics => _diagnostics(),
               _ => const [],

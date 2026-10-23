@@ -51,9 +51,15 @@ final viewerPreferences = <String, Object>{
   'activeProfile': 'viewer',
 };
 
-Future<LocalStore> openStore([Map<String, Object> initial = const {}]) async {
+Future<LocalStore> openStore([
+  Map<String, Object> initial = const {},
+  Future<String> Function(String pin, String salt)? pinHasher,
+]) async {
   SharedPreferences.setMockInitialValues(Map.of(initial));
-  final store = LocalStore(await SharedPreferences.getInstance());
+  final store = LocalStore(
+    await SharedPreferences.getInstance(),
+    pinHasher: pinHasher,
+  );
   addTearDown(store.dispose);
   return store;
 }

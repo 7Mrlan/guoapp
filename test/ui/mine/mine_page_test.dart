@@ -2,6 +2,7 @@ import 'package:duanju_app/local_store.dart';
 import 'package:duanju_app/models.dart';
 import 'package:duanju_app/ui/detail/detail_page.dart';
 import 'package:duanju_app/ui/settings/settings_page.dart';
+import 'package:duanju_app/ui/users/users_view.dart';
 import 'package:duanju_app/ui/widgets/drama_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -81,7 +82,7 @@ void main() {
 
     await tester.tap(find.text('管理员'));
     await settle(tester);
-    expect(find.text('「用户管理」正在重建'), findsOneWidget);
+    expect(find.byType(UsersView), findsOneWidget);
     await systemBack(tester);
 
     await tester.tap(find.text('全部').last);
