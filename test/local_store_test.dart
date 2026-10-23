@@ -354,4 +354,25 @@ void main() {
       });
     }
   });
+
+  group('history', () {
+    test(
+      'removing entries skips switched-off sources and keeps them',
+      () async {
+        final store = await openStore();
+        final third = drama('3', title: '第三部');
+        for (final item in [first, second, third]) {
+          await store.saveWatch(watching(item));
+        }
+        await store.setSourceEnabled('hongguo', false);
+        await store.removeHistory({first.id});
+        await store.setSourceEnabled('hongguo', true);
+        expect(store.history, hasLength(3));
+
+        await store.removeHistory({first.id, third.id, 'hongguo:missing'});
+        expect(store.history.map((entry) => entry.drama.id), [second.id]);
+        expect(restartStore(store).history.single.drama.id, second.id);
+      },
+    );
+  });
 }

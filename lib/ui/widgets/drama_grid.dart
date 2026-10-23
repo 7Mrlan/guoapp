@@ -41,6 +41,23 @@ SliverGridDelegate dramaGridDelegate(BuildContext context, double width) {
   );
 }
 
+KeyEventResult wrapGridRow(int index, int columns, int count, KeyEvent event) {
+  if (event is KeyUpEvent) return KeyEventResult.ignored;
+  final primary = FocusManager.instance.primaryFocus;
+  final last = count - 1;
+  switch (event.logicalKey) {
+    case LogicalKeyboardKey.arrowRight
+        when index % columns == columns - 1 || index == last:
+      if (index < last) primary?.nextFocus();
+      return KeyEventResult.handled;
+    case LogicalKeyboardKey.arrowLeft when index % columns == 0 && index > 0:
+      primary?.previousFocus();
+      return KeyEventResult.handled;
+    default:
+      return KeyEventResult.ignored;
+  }
+}
+
 class DramaSliverGrid extends StatelessWidget {
   const DramaSliverGrid({
     super.key,
@@ -56,23 +73,6 @@ class DramaSliverGrid extends StatelessWidget {
   final int? Function(Drama drama)? rankOf;
   final bool autofocus;
 
-  KeyEventResult _wrapRow(int index, int columns, KeyEvent event) {
-    if (event is KeyUpEvent) return KeyEventResult.ignored;
-    final primary = FocusManager.instance.primaryFocus;
-    final last = items.length - 1;
-    switch (event.logicalKey) {
-      case LogicalKeyboardKey.arrowRight
-          when index % columns == columns - 1 || index == last:
-        if (index < last) primary?.nextFocus();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowLeft when index % columns == 0 && index > 0:
-        primary?.previousFocus();
-        return KeyEventResult.handled;
-      default:
-        return KeyEventResult.ignored;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final (columns, _, _) = _gridLayout(context, width);
@@ -85,7 +85,8 @@ class DramaSliverGrid extends StatelessWidget {
           key: ValueKey(drama.id),
           canRequestFocus: false,
           skipTraversal: true,
-          onKeyEvent: (_, event) => _wrapRow(index, columns, event),
+          onKeyEvent: (_, event) =>
+              wrapGridRow(index, columns, items.length, event),
           child: DramaTile(
             drama: drama,
             rank: rankOf?.call(drama),

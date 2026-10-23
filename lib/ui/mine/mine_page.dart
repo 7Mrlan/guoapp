@@ -6,6 +6,7 @@ import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
 import '../detail/detail_page.dart';
+import '../history/history_page.dart';
 import '../shell/app_shell.dart';
 import '../settings/settings_page.dart';
 import '../shell/pending_pages.dart';
@@ -47,10 +48,8 @@ class MinePage extends StatelessWidget {
     ),
   );
 
-  void _openHistory(BuildContext context) => openPage<void>(
-    context,
-    (_) => const PendingPage(title: '观看记录', icon: Icons.history_rounded),
-  );
+  void _openHistory(BuildContext context) =>
+      openPage<void>(context, (_) => HistoryPage(store: store));
 
   void _openDownloads(BuildContext context) => openPage<void>(
     context,

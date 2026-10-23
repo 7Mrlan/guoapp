@@ -17,6 +17,7 @@ class _PosterButton extends StatefulWidget {
     this.onMore,
     this.focusNode,
     this.autofocus = false,
+    this.checked,
   });
   final Widget cover;
   final List<Widget> caption;
@@ -25,6 +26,7 @@ class _PosterButton extends StatefulWidget {
   final VoidCallback? onMore;
   final FocusNode? focusNode;
   final bool autofocus;
+  final bool? checked;
 
   @override
   State<_PosterButton> createState() => _PosterButtonState();
@@ -83,6 +85,7 @@ class _PosterButtonState extends State<_PosterButton> {
     );
     return Semantics(
       label: widget.label,
+      checked: widget.checked,
       child: CallbackShortcuts(
         bindings: {
           const SingleActivator(LogicalKeyboardKey.contextMenu): ?widget.onMore,
@@ -182,6 +185,7 @@ class ProgressPoster extends StatelessWidget {
     this.onMore,
     this.focusNode,
     this.width = 100,
+    this.selected,
   });
   final Drama drama;
   final double progress;
@@ -191,6 +195,7 @@ class ProgressPoster extends StatelessWidget {
   final VoidCallback? onMore;
   final FocusNode? focusNode;
   final double width;
+  final bool? selected;
 
   static double extentFor(BuildContext context, double width) {
     final scaler = MediaQuery.textScalerOf(context);
@@ -267,9 +272,45 @@ class ProgressPoster extends StatelessWidget {
                 ),
               ),
             ),
+            if (selected case final selected?) ...[
+              if (selected)
+                IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(_coverRadius),
+                      border: Border.all(color: colors.primary, width: 3),
+                    ),
+                  ),
+                ),
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: selected
+                        ? colors.primary
+                        : Colors.black.withValues(alpha: 0.35),
+                    border: selected
+                        ? null
+                        : Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: selected
+                      ? Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: colors.onPrimary,
+                        )
+                      : null,
+                ),
+              ),
+            ],
           ],
         ),
         label: '${drama.title}，${tag == null ? '' : '$tag，'}$caption',
+        checked: selected,
         onTap: onTap,
         onMore: onMore,
         focusNode: focusNode,
