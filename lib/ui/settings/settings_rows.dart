@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_scope.dart';
+import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
 
 bool settingsSplit(BuildContext context) =>
@@ -28,15 +29,18 @@ Future<T?> showOptionDialog<T>(
     title: Text(title),
     children: [
       for (final option in options.entries)
-        ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-          autofocus: option.key == selected,
-          selected: option.key == selected,
-          title: Text(option.value),
-          trailing: option.key == selected
-              ? const Icon(Icons.check_rounded)
-              : null,
-          onTap: () => Navigator.pop(context, option.key),
+        TileFocus(
+          builder: (focusNode) => ListTile(
+            focusNode: focusNode,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+            autofocus: option.key == selected,
+            selected: option.key == selected,
+            title: Text(option.value),
+            trailing: option.key == selected
+                ? const Icon(Icons.check_rounded)
+                : null,
+            onTap: () => Navigator.pop(context, option.key),
+          ),
         ),
     ],
   ),
@@ -71,12 +75,15 @@ class SwitchTile extends StatelessWidget {
   final ValueChanged<bool>? onChanged;
 
   @override
-  Widget build(BuildContext context) => SwitchListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-    title: Text(title),
-    subtitle: subtitle == null ? null : Text(subtitle!),
-    value: value,
-    onChanged: onChanged,
+  Widget build(BuildContext context) => TileFocus(
+    builder: (focusNode) => SwitchListTile(
+      focusNode: focusNode,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle!),
+      value: value,
+      onChanged: onChanged,
+    ),
   );
 }
 

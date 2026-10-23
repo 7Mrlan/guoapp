@@ -157,64 +157,74 @@ class ProfileTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    return ListTile(
-      minTileHeight: 68,
-      contentPadding: EdgeInsets.fromLTRB(20, 4, trailing == null ? 20 : 12, 4),
-      horizontalTitleGap: 16,
-      autofocus: autofocus,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: current
-              ? colors.primaryContainer
-              : colors.surfaceContainerHighest,
-          shape: BoxShape.circle,
+    return TileFocus(
+      builder: (focusNode) => ListTile(
+        focusNode: focusNode,
+        minTileHeight: 68,
+        contentPadding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          trailing == null ? 20 : 12,
+          4,
         ),
-        child: Icon(
-          Icons.person_outline_rounded,
-          size: 22,
-          color: current ? colors.onPrimaryContainer : colors.onSurfaceVariant,
-        ),
-      ),
-      title: Row(
-        spacing: 8,
-        children: [
-          Flexible(
-            child: Text(
-              profile.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+        horizontalTitleGap: 16,
+        autofocus: autofocus,
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: current
+                ? colors.primaryContainer
+                : colors.surfaceContainerHighest,
+            shape: BoxShape.circle,
           ),
-          if (current)
-            Container(
-              height: 22,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: colors.secondaryContainer,
-                borderRadius: BorderRadius.circular(11),
-              ),
+          child: Icon(
+            Icons.person_outline_rounded,
+            size: 22,
+            color: current
+                ? colors.onPrimaryContainer
+                : colors.onSurfaceVariant,
+          ),
+        ),
+        title: Row(
+          spacing: 8,
+          children: [
+            Flexible(
               child: Text(
-                '当前',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: colors.onSecondaryContainer,
+                profile.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (current)
+              Container(
+                height: 22,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.secondaryContainer,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Text(
+                  '当前',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: colors.onSecondaryContainer,
+                  ),
                 ),
               ),
-            ),
-          if (profile.protected)
-            Icon(
-              Icons.lock_outline_rounded,
-              size: 16,
-              color: colors.onSurfaceVariant,
-              semanticLabel: '有密码',
-            ),
-        ],
+            if (profile.protected)
+              Icon(
+                Icons.lock_outline_rounded,
+                size: 16,
+                color: colors.onSurfaceVariant,
+                semanticLabel: '有密码',
+              ),
+          ],
+        ),
+        subtitle: Text(subtitle),
+        trailing: trailing,
+        onTap: onTap,
       ),
-      subtitle: Text(subtitle),
-      trailing: trailing,
-      onTap: onTap,
     );
   }
 }

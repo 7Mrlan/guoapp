@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../local_store.dart';
 import '../../models.dart';
+import '../widgets/focus_ring.dart';
 import 'settings_rows.dart';
 
 class SourcesView extends StatelessWidget {
@@ -55,14 +56,17 @@ class _SourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MergeSemantics(
-    child: ListTile(
-      minTileHeight: 68,
-      contentPadding: const EdgeInsets.fromLTRB(20, 4, 16, 4),
-      title: Text(site.name),
-      subtitle: Text(site.description),
-      onTap: onChanged == null ? null : () => onChanged!(!enabled),
-      trailing: ExcludeFocus(
-        child: Switch(value: enabled, onChanged: onChanged),
+    child: TileFocus(
+      builder: (focusNode) => ListTile(
+        focusNode: focusNode,
+        minTileHeight: 68,
+        contentPadding: const EdgeInsets.fromLTRB(20, 4, 16, 4),
+        title: Text(site.name),
+        subtitle: Text(site.description),
+        onTap: onChanged == null ? null : () => onChanged!(!enabled),
+        trailing: ExcludeFocus(
+          child: Switch(value: enabled, onChanged: onChanged),
+        ),
       ),
     ),
   );

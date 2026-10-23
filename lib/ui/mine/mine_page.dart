@@ -696,12 +696,14 @@ class _TelevisionEntry extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return FocusRing(
       radius: 20,
+      scale: 1,
       child: Material(
         color: colors.surfaceContainer,
         borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           focusNode: focusNode,
+          focusColor: Colors.transparent,
           onTap: onTap,
           child: SizedBox(
             height: 84,

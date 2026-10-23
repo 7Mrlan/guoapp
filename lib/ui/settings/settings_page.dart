@@ -543,6 +543,7 @@ class _GroupItem extends StatelessWidget {
       selected: selected,
       child: FocusRing(
         radius: 24,
+        scale: 1,
         child: Material(
           color: selected ? colors.secondaryContainer : Colors.transparent,
           shape: const StadiumBorder(),
@@ -550,6 +551,9 @@ class _GroupItem extends StatelessWidget {
           child: InkWell(
             focusNode: focusNode,
             autofocus: autofocus,
+            focusColor: AppScope.of(context).television
+                ? Colors.transparent
+                : null,
             onTap: onTap,
             onFocusChange: (focused) {
               if (focused) onFocus?.call();

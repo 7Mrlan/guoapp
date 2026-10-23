@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../local_profiles.dart';
 import '../../local_store.dart';
 import '../../models.dart';
+import '../app_scope.dart';
 import '../settings/settings_rows.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
@@ -400,11 +401,15 @@ class _SourceCheck extends StatelessWidget {
   Widget build(BuildContext context) => MergeSemantics(
     child: FocusRing(
       radius: 24,
+      scale: 1,
       child: Material(
         type: MaterialType.transparency,
         shape: const StadiumBorder(),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
+          focusColor: AppScope.of(context).television
+              ? Colors.transparent
+              : null,
           onTap: () => onChanged(!value),
           child: SizedBox(
             height: 48,

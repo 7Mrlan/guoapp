@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../local_store.dart';
 import '../../theme_color.dart';
 import '../app_scope.dart';
+import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
 import 'settings_rows.dart';
 
@@ -51,21 +52,24 @@ class AppearanceSettings extends StatelessWidget {
               ),
             ),
             const Divider(indent: 16, endIndent: 16),
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              title: const Text('跟随系统取色'),
-              subtitle: Text(
-                systemColorAvailable
-                    ? 'Android 12 及以上跟随壁纸，Windows 跟随系统强调色'
-                    : '本机不支持系统取色，使用预设色板',
+            TileFocus(
+              builder: (focusNode) => SwitchListTile(
+                focusNode: focusNode,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                title: const Text('跟随系统取色'),
+                subtitle: Text(
+                  systemColorAvailable
+                      ? 'Android 12 及以上跟随壁纸，Windows 跟随系统强调色'
+                      : '本机不支持系统取色，使用预设色板',
+                ),
+                value: following,
+                onChanged: systemColorAvailable
+                    ? (value) => saveSetting(
+                        context,
+                        () => store.setFollowSystemColor(value),
+                      )
+                    : null,
               ),
-              value: following,
-              onChanged: systemColorAvailable
-                  ? (value) => saveSetting(
-                      context,
-                      () => store.setFollowSystemColor(value),
-                    )
-                  : null,
             ),
             const Divider(indent: 16, endIndent: 16),
             Opacity(

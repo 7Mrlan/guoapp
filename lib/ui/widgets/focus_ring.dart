@@ -219,10 +219,12 @@ class FocusRing extends StatefulWidget {
     required this.radius,
     required this.child,
     this.offset = 3,
+    this.scale = 1.06,
   });
   final double radius;
   final Widget child;
   final double offset;
+  final double scale;
 
   @override
   State<FocusRing> createState() => _FocusRingState();
@@ -239,7 +241,7 @@ class _FocusRingState extends State<FocusRing> {
       skipTraversal: true,
       onFocusChange: (focused) => setState(() => _focused = focused),
       child: AnimatedScale(
-        scale: visible && AppScope.of(context).television ? 1.06 : 1,
+        scale: visible && AppScope.of(context).television ? widget.scale : 1,
         duration: const Duration(milliseconds: 120),
         child: FocusOutline(
           visible: visible,
@@ -247,6 +249,47 @@ class _FocusRingState extends State<FocusRing> {
           offset: widget.offset,
           child: widget.child,
         ),
+      ),
+    );
+  }
+}
+
+class TileFocus extends StatefulWidget {
+  const TileFocus({super.key, required this.builder});
+  final Widget Function(FocusNode focusNode) builder;
+
+  @override
+  State<TileFocus> createState() => _TileFocusState();
+}
+
+class _TileFocusState extends State<TileFocus> {
+  final _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_changed);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _changed() => setState(() {});
+
+  @override
+  Widget build(BuildContext context) {
+    final tile = widget.builder(_focusNode);
+    if (!AppScope.of(context).television) return tile;
+    return Theme(
+      data: Theme.of(context).copyWith(focusColor: Colors.transparent),
+      child: FocusOutline(
+        visible: focusVisible(_focusNode.hasPrimaryFocus),
+        radius: 20,
+        offset: -3,
+        child: tile,
       ),
     );
   }

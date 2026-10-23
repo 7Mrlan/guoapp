@@ -132,10 +132,13 @@ class _SearchPageState extends State<SearchPage> {
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
           for (final item in _suggestions)
-            ListTile(
-              leading: const Icon(Icons.search_rounded),
-              title: Text(item),
-              onTap: () => _submit(item),
+            TileFocus(
+              builder: (focusNode) => ListTile(
+                focusNode: focusNode,
+                leading: const Icon(Icons.search_rounded),
+                title: Text(item),
+                onTap: () => _submit(item),
+              ),
             ),
         ],
       );

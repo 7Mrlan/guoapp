@@ -37,47 +37,49 @@ class SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return ListTile(
-      minTileHeight: subtitle == null ? 60 : 72,
-      contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
-      horizontalTitleGap: 14,
-      leading: icon == null
-          ? null
-          : Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: colors.secondaryContainer,
-                shape: BoxShape.circle,
+    return TileFocus(
+      builder: (focusNode) => ListTile(
+        focusNode: focusNode,
+        minTileHeight: subtitle == null ? 60 : 72,
+        contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
+        horizontalTitleGap: 14,
+        leading: icon == null
+            ? null
+            : Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: colors.secondaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 22, color: colors.onSecondaryContainer),
               ),
-              child: Icon(icon, size: 22, color: colors.onSecondaryContainer),
-            ),
-      title: Text(title),
-      subtitle: subtitle == null ? null : Text(subtitle!),
-      trailing:
-          trailing ??
-          (value == null && onTap == null
-              ? null
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 4,
-                  children: [
-                    if (value case final value?)
-                      Text(
-                        value,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        title: Text(title),
+        subtitle: subtitle == null ? null : Text(subtitle!),
+        trailing:
+            trailing ??
+            (value == null && onTap == null
+                ? null
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 4,
+                    children: [
+                      if (value case final value?)
+                        Text(
+                          value,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: colors.onSurfaceVariant),
+                        ),
+                      if (onTap != null)
+                        Icon(
+                          Icons.chevron_right_rounded,
                           color: colors.onSurfaceVariant,
                         ),
-                      ),
-                    if (onTap != null)
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: colors.onSurfaceVariant,
-                      ),
-                  ],
-                )),
-      onTap: onTap,
-      enabled: enabled,
+                    ],
+                  )),
+        onTap: onTap,
+        enabled: enabled,
+      ),
     );
   }
 }
