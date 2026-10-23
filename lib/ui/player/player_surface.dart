@@ -111,7 +111,7 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
 
   void _scheduleHide() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 1), () {
+    _hideTimer = Timer(const Duration(milliseconds: 500), () {
       final state = _session.player.state;
       if (!mounted ||
           _overBar ||
@@ -215,7 +215,9 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
                 excluding: !visible,
                 child: AnimatedOpacity(
                   opacity: visible ? 1 : 0,
-                  duration: const Duration(milliseconds: 180),
+                  duration: state.playing
+                      ? const Duration(milliseconds: 180)
+                      : Duration.zero,
                   child: _controls(context),
                 ),
               ),
