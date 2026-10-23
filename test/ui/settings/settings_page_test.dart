@@ -1,6 +1,8 @@
 import 'package:duanju_app/app_build.dart';
 import 'package:duanju_app/ui/settings/appearance_settings.dart';
+import 'package:duanju_app/ui/settings/diary_view.dart';
 import 'package:duanju_app/ui/settings/settings_page.dart';
+import 'package:duanju_app/ui/settings/settings_sections.dart';
 import 'package:duanju_app/ui/settings/sources_view.dart';
 import 'package:duanju_app/ui/users/users_view.dart';
 import 'package:flutter/material.dart';
@@ -147,5 +149,29 @@ void main() {
 
     await systemBack(tester);
     expect(find.byType(SettingsPage), findsNothing);
+  });
+
+  testWidgets('television subpages close with the back key only', (
+    tester,
+  ) async {
+    await pumpApp(tester, size: televisionSize, mode: 'television');
+    await openSettings(tester);
+    for (var i = 0; i < SettingsGroup.values.length - 1; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    }
+    await settle(tester);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await settle(tester);
+    expect(focusHolds(tester, find.text('播放调试日记')), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await settle(tester);
+    expect(find.byType(DiaryView), findsOneWidget);
+    expect(find.byTooltip('返回'), findsNothing);
+    expect(focusHolds(tester, find.text('复制全部')), isTrue);
+
+    expect(await systemBack(tester), isTrue);
+    expect(find.byType(DiaryView), findsNothing);
+    expect(focusHolds(tester, find.text('播放调试日记')), isTrue);
   });
 }

@@ -329,72 +329,94 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _groupList(bool television) => ListView(
-    padding: EdgeInsets.fromLTRB(16, television ? 24 : 20, 12, 24),
-    children: [
-      SizedBox(
-        height: 48,
-        child: Row(
-          spacing: 4,
-          children: [
-            if (!television)
-              BarButton(
-                icon: Icons.arrow_back_rounded,
-                tooltip: '返回',
-                onPressed: () => Navigator.pop(context),
-              ),
-            Padding(
-              padding: EdgeInsets.only(left: television ? 8 : 0),
-              child: Text(
-                '设置',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 4),
-      for (final group in SettingsGroup.values)
+  Widget _groupList(bool television) {
+    final left = television ? televisionInset : 16.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: _GroupItem(
-            key: ValueKey('settings-${group.name}'),
-            label: group.label,
-            selected: group == _group,
-            focusNode: _groupFocus[group.index],
-            autofocus: television && group == _group,
-            onTap: () => _select(group),
-            onFocus: television ? () => _select(group) : null,
+          padding: EdgeInsets.fromLTRB(left, television ? 27 : 20, 12, 0),
+          child: SizedBox(
+            height: 48,
+            child: Row(
+              spacing: 4,
+              children: [
+                if (!television)
+                  BarButton(
+                    icon: Icons.arrow_back_rounded,
+                    tooltip: '返回',
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                Padding(
+                  padding: EdgeInsets.only(left: television ? 8 : 0),
+                  child: Text(
+                    '设置',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      const SizedBox(height: 12),
-      const Divider(indent: 8, endIndent: 8),
-      const SizedBox(height: 8),
-      _GroupItem(
-        key: const ValueKey('settings-export'),
-        label: '导出备份',
-        onTap: _backupEnabled ? _exportBackup : null,
+        Expanded(
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(
+              context,
+            ).copyWith(scrollbars: false),
+            child: ListView(
+              padding: television
+                  ? const EdgeInsets.fromLTRB(televisionInset, 4, 16, 27)
+                  : const EdgeInsets.fromLTRB(16, 4, 12, 24),
+              children: _groupItems(television),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _groupItems(bool television) => [
+    for (final group in SettingsGroup.values)
+      Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: _GroupItem(
+          key: ValueKey('settings-${group.name}'),
+          label: group.label,
+          selected: group == _group,
+          focusNode: _groupFocus[group.index],
+          autofocus: television && group == _group,
+          onTap: () => _select(group),
+          onFocus: television ? () => _select(group) : null,
+        ),
       ),
-      const SizedBox(height: 4),
-      _GroupItem(
-        key: const ValueKey('settings-restore'),
-        label: '恢复备份',
-        onTap: _backupEnabled ? _restoreBackup : null,
-      ),
-    ],
-  );
+    const SizedBox(height: 12),
+    const Divider(indent: 8, endIndent: 8),
+    const SizedBox(height: 8),
+    _GroupItem(
+      key: const ValueKey('settings-export'),
+      label: '导出备份',
+      onTap: _backupEnabled ? _exportBackup : null,
+    ),
+    const SizedBox(height: 4),
+    _GroupItem(
+      key: const ValueKey('settings-restore'),
+      label: '恢复备份',
+      onTap: _backupEnabled ? _restoreBackup : null,
+    ),
+  ];
 
   Widget _detail(bool television) {
     final subpage = _subpage;
-    final top = television ? 24.0 : 20.0;
+    final top = television ? 27.0 : 20.0;
+    final right = television ? televisionInset : 24.0;
     final placeholder = _group.placeholder;
     final content = placeholder != null
         ? StatusView(title: '「$placeholder」正在重建', icon: _group.icon)
         : SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+            padding: EdgeInsets.fromLTRB(24, 8, right, television ? 27 : 32),
             child: Align(
               alignment: Alignment.topLeft,
               child: ConstrainedBox(
@@ -414,7 +436,7 @@ class _SettingsPageState extends State<SettingsPage> {
               key: ValueKey(_group),
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _DetailHeader(title: _group.label, top: top),
+                _DetailHeader(title: _group.label, top: top, right: right),
                 Expanded(child: content),
               ],
             ),
@@ -428,11 +450,12 @@ class _SettingsPageState extends State<SettingsPage> {
               _DetailHeader(
                 title: subpage.title,
                 top: top,
-                onBack: _closeSubpage,
+                right: right,
+                onBack: television ? null : _closeSubpage,
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: EdgeInsets.only(left: 8, right: right - 16),
                   child: Align(
                     alignment: Alignment.topLeft,
                     child: ConstrainedBox(
@@ -450,14 +473,20 @@ class _SettingsPageState extends State<SettingsPage> {
 }
 
 class _DetailHeader extends StatelessWidget {
-  const _DetailHeader({required this.title, required this.top, this.onBack});
+  const _DetailHeader({
+    required this.title,
+    required this.top,
+    required this.right,
+    this.onBack,
+  });
   final String title;
   final double top;
+  final double right;
   final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.fromLTRB(onBack == null ? 24 : 16, top, 24, 0),
+    padding: EdgeInsets.fromLTRB(onBack == null ? 24 : 16, top, right, 0),
     child: SizedBox(
       height: 48,
       child: Row(
