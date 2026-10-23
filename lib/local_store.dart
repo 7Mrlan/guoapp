@@ -138,9 +138,8 @@ class LocalStore extends ChangeNotifier {
       if (!locked && profile.allows(site.id)) site,
   ];
 
-  // TODO(ui-rebuild): 站源管理重建前临时全部开启，重建站源管理时恢复为
-  // `_sourceSwitches[source] ?? !SourceSite.isRestricted(source)`。
-  bool sourceEnabled(String source) => true;
+  bool sourceEnabled(String source) =>
+      _sourceSwitches[source] ?? !SourceSite.isRestricted(source);
 
   void _loadSourceSwitches() {
     try {
