@@ -12,6 +12,7 @@ import '../users/users_view.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
 import 'appearance_settings.dart';
+import 'backup_actions.dart';
 import 'diary_view.dart';
 import 'settings_rows.dart';
 import 'sources_view.dart';
@@ -284,7 +285,58 @@ class SettingsSection extends StatelessWidget {
         ),
       ],
     ),
+    _BackupCard(store: store),
   ];
+}
+
+class _BackupCard extends StatefulWidget {
+  const _BackupCard({required this.store});
+  final LocalStore store;
+
+  @override
+  State<_BackupCard> createState() => _BackupCardState();
+}
+
+class _BackupCardState extends State<_BackupCard> {
+  var _busy = false;
+
+  Future<void> _run(Future<String?> Function() task) async {
+    setState(() => _busy = true);
+    String? message;
+    try {
+      message = await task();
+    } catch (failure) {
+      message = '$failure';
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (message != null && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final admin = widget.store.profile.admin;
+    return SettingsCard(
+      children: [
+        SettingsTile(
+          title: '导出备份',
+          subtitle: admin ? '包含本地用户、追剧、历史和设置，不含视频文件' : adminOnly,
+          enabled: admin && !_busy,
+          onTap: () => _run(() => exportBackupFile(widget.store)),
+        ),
+        SettingsTile(
+          title: '恢复备份',
+          subtitle: admin ? '替换本机的用户、追剧、观看记录和偏好设置，已下载视频保留' : adminOnly,
+          enabled: admin && !_busy,
+          onTap: () => _run(() => restoreBackupFile(context, widget.store)),
+        ),
+      ],
+    );
+  }
 }
 
 class _Note extends StatelessWidget {

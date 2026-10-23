@@ -13,11 +13,8 @@ import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
 import '../widgets/status_view.dart';
 import 'appearance_settings.dart';
-import 'backup_actions.dart';
 import 'settings_rows.dart';
 import 'settings_sections.dart';
-
-const _themeModes = {'light': '浅色', 'dark': '深色', 'system': '跟随系统'};
 
 typedef _Subpage = ({String title, WidgetBuilder body});
 
@@ -76,7 +73,6 @@ class _SettingsPageState extends State<SettingsPage> {
   _Subpage? _subpage;
   FocusNode? _opener;
   var _detailFocused = false;
-  var _backupBusy = false;
 
   @override
   void didChangeDependencies() {
@@ -103,7 +99,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final scope = AppScope.of(context);
     return switch (group) {
       SettingsGroup.appearance => [
-        _themeModes[store.themeMode],
+        themeModes[store.themeMode],
         scope.systemColorAvailable && store.followSystemColor
             ? '系统取色'
             : store.themeColor.label,
@@ -116,33 +112,9 @@ class _SettingsPageState extends State<SettingsPage> {
       SettingsGroup.users => '当前：${store.profile.name}',
       SettingsGroup.about =>
         scope.version.isEmpty ? '版本未知' : '版本 ${scope.version}',
-      SettingsGroup.diagnostics => '播放调试日记',
+      SettingsGroup.diagnostics => '播放调试日记、备份与恢复',
     };
   }
-
-  Future<void> _backup(Future<String?> Function() task) async {
-    setState(() => _backupBusy = true);
-    String? message;
-    try {
-      message = await task();
-    } catch (failure) {
-      message = '$failure';
-    } finally {
-      if (mounted) setState(() => _backupBusy = false);
-    }
-    if (message != null && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-    }
-  }
-
-  void _exportBackup() => _backup(() => exportBackupFile(widget.store));
-
-  void _restoreBackup() =>
-      _backup(() => restoreBackupFile(context, widget.store));
-
-  bool get _backupEnabled => widget.store.profile.admin && !_backupBusy;
 
   Widget _section(SettingsGroup group) => SettingsSection(
     group: group,
@@ -237,29 +209,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   subtitle: _summary(group),
                   onTap: () => _openGroup(group),
                 ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          GroupCard(
-            children: [
-              SettingsTile(
-                icon: Icons.upload_file_outlined,
-                title: '导出备份',
-                subtitle: widget.store.profile.admin
-                    ? '包含本地用户、追剧、历史和设置，不含视频文件'
-                    : adminOnly,
-                enabled: _backupEnabled,
-                onTap: _exportBackup,
-              ),
-              SettingsTile(
-                icon: Icons.restore_rounded,
-                title: '恢复备份',
-                subtitle: widget.store.profile.admin
-                    ? '替换本机的用户、追剧、观看记录和偏好设置，已下载视频保留'
-                    : adminOnly,
-                enabled: _backupEnabled,
-                onTap: _restoreBackup,
-              ),
             ],
           ),
         ],
@@ -392,20 +341,6 @@ class _SettingsPageState extends State<SettingsPage> {
           onFocus: television ? () => _select(group) : null,
         ),
       ),
-    const SizedBox(height: 12),
-    const Divider(indent: 8, endIndent: 8),
-    const SizedBox(height: 8),
-    _GroupItem(
-      key: const ValueKey('settings-export'),
-      label: '导出备份',
-      onTap: _backupEnabled ? _exportBackup : null,
-    ),
-    const SizedBox(height: 4),
-    _GroupItem(
-      key: const ValueKey('settings-restore'),
-      label: '恢复备份',
-      onTap: _backupEnabled ? _restoreBackup : null,
-    ),
   ];
 
   Widget _detail(bool television) {
@@ -522,62 +457,54 @@ class _GroupItem extends StatelessWidget {
   const _GroupItem({
     super.key,
     required this.label,
-    this.selected = false,
-    this.focusNode,
-    this.autofocus = false,
+    required this.selected,
+    required this.focusNode,
+    required this.autofocus,
     required this.onTap,
-    this.onFocus,
+    required this.onFocus,
   });
   final String label;
   final bool selected;
-  final FocusNode? focusNode;
+  final FocusNode focusNode;
   final bool autofocus;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
   final VoidCallback? onFocus;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    return Semantics(
-      selected: selected,
-      child: FocusRing(
-        radius: 24,
-        scale: 1,
-        child: Material(
-          color: selected ? colors.secondaryContainer : Colors.transparent,
-          shape: const StadiumBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            focusNode: focusNode,
-            autofocus: autofocus,
-            focusColor: AppScope.of(context).television
-                ? Colors.transparent
-                : null,
-            onTap: onTap,
-            onFocusChange: (focused) {
-              if (focused) onFocus?.call();
-            },
-            child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                label,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontSize: 15,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected
-                      ? colors.onSecondaryContainer
-                      : onTap == null
-                      ? colors.onSurface.withValues(alpha: 0.38)
-                      : colors.onSurface,
-                ),
-              ),
+    final television = AppScope.of(context).television;
+    final item = Material(
+      color: selected ? colors.secondaryContainer : Colors.transparent,
+      shape: const StadiumBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        focusNode: focusNode,
+        autofocus: autofocus,
+        focusColor: television ? Colors.transparent : null,
+        onTap: onTap,
+        onFocusChange: (focused) {
+          if (focused) onFocus?.call();
+        },
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          alignment: Alignment.centerLeft,
+          child: Text(
+            label,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontSize: 15,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? colors.onSecondaryContainer : colors.onSurface,
             ),
           ),
         ),
       ),
+    );
+    return Semantics(
+      selected: selected,
+      child: television ? item : FocusRing(radius: 24, scale: 1, child: item),
     );
   }
 }

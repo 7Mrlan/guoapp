@@ -161,12 +161,14 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
                   },
               systemColorAvailable: _systemColor != null,
               version: widget.version,
-              child: FocusOutlineLayer(
-                child: FocusTraversalGroup(
-                  policy: ReadingOrderTraversalPolicy(
-                    requestFocusCallback: revealFocus,
+              child: FocusOutlineMotion(
+                child: FocusOutlineLayer(
+                  child: FocusTraversalGroup(
+                    policy: ReadingOrderTraversalPolicy(
+                      requestFocusCallback: revealFocus,
+                    ),
+                    child: child!,
                   ),
-                  child: child!,
                 ),
               ),
             ),

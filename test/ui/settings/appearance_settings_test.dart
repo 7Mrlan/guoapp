@@ -31,9 +31,12 @@ void main() {
     final store = await pumpApp(tester);
     await openAppearance(tester);
 
+    await tester.tap(find.text('主题模式'));
+    await settle(tester);
     await tester.tap(find.text('深色'));
     await settle(tester);
     expect(store.themeMode, 'dark');
+    expect(find.text('深色'), findsOneWidget);
 
     await tester.tap(
       find.descendant(

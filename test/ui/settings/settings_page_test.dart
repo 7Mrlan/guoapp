@@ -5,6 +5,7 @@ import 'package:duanju_app/ui/settings/settings_page.dart';
 import 'package:duanju_app/ui/settings/settings_sections.dart';
 import 'package:duanju_app/ui/settings/sources_view.dart';
 import 'package:duanju_app/ui/users/users_view.dart';
+import 'package:duanju_app/ui/widgets/focus_ring.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,20 +33,10 @@ void main() {
   ) async {
     final store = await pumpApp(tester);
     await openSettings(tester);
-    for (final label in [
-      '外观',
-      '播放',
-      '下载',
-      '站源',
-      '代理',
-      '用户',
-      '关于',
-      '诊断',
-      '导出备份',
-      '恢复备份',
-    ]) {
+    for (final label in ['外观', '播放', '下载', '站源', '代理', '用户', '关于', '诊断']) {
       expect(find.text(label), findsOneWidget);
     }
+    expect(find.text('导出备份'), findsNothing);
     expect(find.text('跟随系统 · 暖橙 · 手机 / 电脑'), findsOneWidget);
 
     await openSettingsGroup(tester, '下载');
@@ -60,6 +51,11 @@ void main() {
     await systemBack(tester);
     await openSettingsGroup(tester, '用户');
     expect(find.byType(UsersView), findsOneWidget);
+
+    await systemBack(tester);
+    await openSettingsGroup(tester, '诊断');
+    expect(tester.widget<ListTile>(_tile('导出备份')).enabled, isTrue);
+    expect(tester.widget<ListTile>(_tile('恢复备份')).enabled, isTrue);
   });
 
   testWidgets('restricted rows stay visible but greyed out', (tester) async {
@@ -84,6 +80,7 @@ void main() {
     );
 
     await systemBack(tester);
+    await openSettingsGroup(tester, '诊断');
     expect(tester.widget<ListTile>(_tile('导出备份')).enabled, isFalse);
     expect(tester.widget<ListTile>(_tile('恢复备份')).enabled, isFalse);
     expect(repository.savedResources, isEmpty);
@@ -96,7 +93,6 @@ void main() {
     await pumpApp(tester, size: wideSize, repository: repository);
     await openSettings(tester);
     expect(find.byType(AppearanceSettings), findsOneWidget);
-    expect(_groupItem('export'), findsOneWidget);
 
     await openSettingsGroup(tester, '站源');
     await _choose(tester, '目录请求间隔', '1000 毫秒');
@@ -125,6 +121,16 @@ void main() {
     await openSettings(tester);
     Finder label(String name, String text) =>
         find.descendant(of: _groupItem(name), matching: find.text(text));
+    bool highlighted(String name) =>
+        tester
+            .widget<Material>(
+              find.descendant(
+                of: _groupItem(name),
+                matching: find.byType(Material),
+              ),
+            )
+            .color !=
+        Colors.transparent;
     expect(focusHolds(tester, label('appearance', '外观')), isTrue);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
@@ -132,10 +138,20 @@ void main() {
     await settle(tester);
     expect(focusHolds(tester, label('download', '下载')), isTrue);
     expect(find.text('默认画质'), findsOneWidget);
+    expect(highlighted('download'), isTrue);
+    expect(highlighted('appearance'), isFalse);
+    expect(
+      find.descendant(
+        of: _groupItem('download'),
+        matching: find.byType(FocusRing),
+      ),
+      findsNothing,
+    );
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await settle(tester);
     expect(focusHolds(tester, find.text('默认画质')), isTrue);
+    expect(highlighted('download'), isTrue);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
     await settle(tester);

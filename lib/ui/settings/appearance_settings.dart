@@ -7,6 +7,8 @@ import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
 import 'settings_rows.dart';
 
+const themeModes = {'light': '浅色', 'dark': '深色', 'system': '跟随系统'};
+
 const displayModes = {
   'auto': '自动识别设备',
   'television': '电视 / 遥控器',
@@ -29,27 +31,23 @@ class AppearanceSettings extends StatelessWidget {
       children: [
         GroupCard(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 12,
-                children: [
-                  Text('主题模式', style: text.titleMedium),
-                  SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: 'light', label: Text('浅色')),
-                      ButtonSegment(value: 'dark', label: Text('深色')),
-                      ButtonSegment(value: 'system', label: Text('跟随系统')),
-                    ],
-                    selected: {store.themeMode},
-                    onSelectionChanged: (value) => saveSetting(
-                      context,
-                      () => store.setThemeMode(value.first),
-                    ),
-                  ),
-                ],
-              ),
+            SettingsTile(
+              title: '主题模式',
+              subtitle: themeModes[store.themeMode] ?? themeModes['system']!,
+              onTap: () async {
+                final selection = await showOptionDialog(
+                  context,
+                  title: '主题模式',
+                  options: themeModes,
+                  selected: store.themeMode,
+                );
+                if (selection != null && context.mounted) {
+                  await saveSetting(
+                    context,
+                    () => store.setThemeMode(selection),
+                  );
+                }
+              },
             ),
             const Divider(indent: 16, endIndent: 16),
             TileFocus(
@@ -168,27 +166,30 @@ class _Swatch extends StatelessWidget {
           selected: selected,
           label: color.label,
           excludeSemantics: true,
-          child: Container(
-            width: 50,
-            height: 50,
-            padding: const EdgeInsets.all(3),
-            decoration: ShapeDecoration(
-              shape: CircleBorder(
-                side: BorderSide(
-                  color: selected ? scheme.primary : Colors.transparent,
-                  width: 2,
+          child: FocusRing(
+            radius: 999,
+            child: Container(
+              width: 50,
+              height: 50,
+              padding: const EdgeInsets.all(3),
+              decoration: ShapeDecoration(
+                shape: CircleBorder(
+                  side: BorderSide(
+                    color: selected ? scheme.primary : Colors.transparent,
+                    width: 2,
+                  ),
                 ),
               ),
-            ),
-            child: Material(
-              color: scheme.primary,
-              shape: const CircleBorder(),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: onPressed,
-                child: selected
-                    ? Icon(Icons.check_rounded, color: scheme.onPrimary)
-                    : null,
+              child: Material(
+                color: scheme.primary,
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: onPressed,
+                  child: selected
+                      ? Icon(Icons.check_rounded, color: scheme.onPrimary)
+                      : null,
+                ),
               ),
             ),
           ),
