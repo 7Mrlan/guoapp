@@ -471,4 +471,22 @@ void main() {
     expect(standby.state.playing, isTrue);
     expect(store.watched(_show.id)!.episode, 1);
   });
+
+  test('only buffering that lasts counts as stalled', () async {
+    final repository = _PlaybackRepository();
+    final store = await openStore();
+    final (session, player) = await _open(repository, store);
+
+    player.buffer(true);
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    player.buffer(false);
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    expect(session.stalled, isFalse);
+
+    player.buffer(true);
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    expect(session.stalled, isTrue);
+    player.buffer(false);
+    expect(session.stalled, isFalse);
+  });
 }

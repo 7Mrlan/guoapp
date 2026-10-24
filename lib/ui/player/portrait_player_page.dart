@@ -304,14 +304,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
                   itemBuilder: _page,
                 ),
               ),
-              IgnorePointer(
-                ignoring: _scrolling,
-                child: AnimatedOpacity(
-                  opacity: _scrolling ? 0 : 1,
-                  duration: const Duration(milliseconds: 120),
-                  child: _controls(context),
-                ),
-              ),
+              IgnorePointer(ignoring: _scrolling, child: _controls(context)),
             ],
           ),
         ),
@@ -386,7 +379,6 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
 
   Widget _controls(BuildContext context) {
     final session = _session;
-    final state = session.player.state;
     final padding = MediaQuery.paddingOf(context);
     final bottom = padding.bottom;
     final locked = session.boostLocked;
@@ -423,7 +415,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
               ),
             ),
           ),
-        if (session.ready && state.buffering)
+        if (session.ready && session.stalled)
           const IgnorePointer(
             child: Center(child: CircularProgressIndicator()),
           ),

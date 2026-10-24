@@ -169,11 +169,7 @@ class ExploreHero extends StatelessWidget {
           meta,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: metrics.meta,
-            height: 1.3,
-            color: muted,
-          ),
+          style: TextStyle(fontSize: metrics.meta, height: 1.3, color: muted),
         ),
         if (progress case final progress?)
           Padding(

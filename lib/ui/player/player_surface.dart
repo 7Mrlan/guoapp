@@ -192,7 +192,7 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
     builder: (context, _) {
       final state = _session.player.state;
       final visible =
-          _visible || !state.playing || state.buffering || !_session.ready;
+          _visible || !state.playing || _session.stalled || !_session.ready;
       final popup = visible ? _popup : null;
       return MouseRegion(
         onHover: (_) => _movePointer(),
@@ -220,7 +220,7 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
               },
               onDoubleTap: widget.onFullscreen,
             ),
-            if (_session.ready && state.buffering)
+            if (_session.ready && _session.stalled)
               const IgnorePointer(
                 child: Center(child: CircularProgressIndicator()),
               ),

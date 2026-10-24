@@ -16,6 +16,7 @@ class FakePlayer implements Player {
   final _duration = StreamController<Duration>.broadcast(sync: true);
   final _videoParams = StreamController<VideoParams>.broadcast(sync: true);
   final _error = StreamController<String>.broadcast(sync: true);
+  final _buffering = StreamController<bool>.broadcast(sync: true);
 
   @override
   PlatformPlayer? platform;
@@ -30,7 +31,7 @@ class FakePlayer implements Player {
     const Stream.empty(),
     const Stream.empty(),
     const Stream.empty(),
-    const Stream.empty(),
+    _buffering.stream,
     const Stream.empty(),
     const Stream.empty(),
     const Stream.empty(),
@@ -68,6 +69,11 @@ class FakePlayer implements Player {
   }
 
   void fail(String message) => _error.add(message);
+
+  void buffer(bool buffering) {
+    state = state.copyWith(buffering: buffering);
+    _buffering.add(buffering);
+  }
 
   void resize(int width, int height) =>
       _videoParams.add(VideoParams(w: width, h: height));

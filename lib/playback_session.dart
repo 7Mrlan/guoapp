@@ -83,6 +83,7 @@ class PlaybackSession extends ChangeNotifier {
       _aspectRatio = size.width / size.height;
       _aspectKnown = true;
     }
+    _buffering(player.state.buffering);
     final stream = player.stream;
     _subscriptions.addAll([
       stream.error.listen(_playerError),
@@ -97,12 +98,11 @@ class PlaybackSession extends ChangeNotifier {
         if (!playing) endBoost();
         _sync();
       }),
-      for (final changes in [
-        stream.duration,
-        stream.buffer,
-        stream.buffering,
-        stream.rate,
-      ])
+      stream.buffering.listen((buffering) {
+        _buffering(buffering);
+        _sync();
+      }),
+      for (final changes in [stream.duration, stream.buffer, stream.rate])
         changes.listen((_) => _sync()),
       stream.videoParams.listen((parameters) {
         final size = videoDisplaySize(parameters);
@@ -130,6 +130,7 @@ class PlaybackSession extends ChangeNotifier {
   Timer? _healthTimer;
   Timer? _errorTimer;
   Timer? _boostTimer;
+  Timer? _stallTimer;
   Future<void> _operations = Future<void>.value();
   Future<void> _rates = Future<void>.value();
   int _index;
@@ -148,6 +149,7 @@ class PlaybackSession extends ChangeNotifier {
   bool _boostLocked = false;
   bool _engaged;
   bool _staleAudio = false;
+  bool _stalled = false;
   String _loadingMessage = '正在准备播放';
   String? _error;
   String? _saveWarning;
@@ -179,6 +181,10 @@ class PlaybackSession extends ChangeNotifier {
   bool get localFailure => _localFailure;
   String? get saveWarning => _saveWarning;
   bool get ready => !_loading && _error == null;
+
+  /// 缓冲持续超过半秒才算卡住。mpv 跳转后从关键帧解码时也会短暂报「缓冲」，
+  /// 那时数据已在缓存里，不该闪加载图标。
+  bool get stalled => _stalled;
 
   /// 用户主动暂停（或播完停住）；不随播放器开播前的瞬间状态闪烁。
   bool get paused => !_playIntent;
@@ -218,6 +224,20 @@ class PlaybackSession extends ChangeNotifier {
   );
 
   double get _rate => _boosting ? 2 : _speed;
+
+  void _buffering(bool buffering) {
+    _stallTimer?.cancel();
+    if (buffering) {
+      _stallTimer = Timer(const Duration(milliseconds: 500), () {
+        if (_closed || !player.state.buffering) return;
+        _stalled = true;
+        _notify();
+      });
+    } else if (_stalled) {
+      _stalled = false;
+      _notify();
+    }
+  }
 
   void _notify() {
     if (!_closed) notifyListeners();
@@ -947,6 +967,7 @@ class PlaybackSession extends ChangeNotifier {
     _healthTimer?.cancel();
     _errorTimer?.cancel();
     _boostTimer?.cancel();
+    _stallTimer?.cancel();
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());
     }
