@@ -536,13 +536,14 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
         Positioned(
           left: 4,
           right: 4,
-          bottom: 0,
+          bottom: 4,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 拖动区域保留 20 高，下移 4 压住按钮行顶边，进度条中线离底边 46。
+              // 看起来是按钮行上方 6 高的一条，拖动区域保留 20 高：下移 7 压住按钮行顶边，
+              // 进度条中线离视频底边 51；重叠处按钮优先。
               Transform.translate(
-                offset: const Offset(0, 4),
+                offset: const Offset(0, 7),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: SizedBox(
@@ -552,7 +553,7 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
                 ),
               ),
               SizedBox(
-                height: 40,
+                height: 44,
                 child: Row(
                   children: [
                     _playButton(size: 40, iconSize: 26),
