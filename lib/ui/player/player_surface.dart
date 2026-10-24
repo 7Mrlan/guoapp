@@ -256,8 +256,9 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
               ),
             _hint(),
             if (_session.saveWarning case final warning?) _saveWarning(warning),
-            if (_session.loading) _loading(),
-            if (_session.error case final error?) _failure(context, error),
+            if (_session.loading) PlaybackLoading(session: _session),
+            if (_session.error case final error?)
+              PlaybackFailure(session: _session, error: error),
           ],
         ),
       );
@@ -704,8 +705,14 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
       ),
     ),
   );
+}
 
-  Widget _loading() => ColoredBox(
+class PlaybackLoading extends StatelessWidget {
+  const PlaybackLoading({super.key, required this.session});
+  final PlaybackSession session;
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
     color: Colors.black.withValues(alpha: .78),
     child: Center(
       child: Column(
@@ -714,15 +721,26 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
           const CircularProgressIndicator(),
           const SizedBox(height: 16),
           Text(
-            _session.loadingMessage,
+            session.loadingMessage,
             style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
         ],
       ),
     ),
   );
+}
 
-  Widget _failure(BuildContext context, String error) {
+class PlaybackFailure extends StatelessWidget {
+  const PlaybackFailure({
+    super.key,
+    required this.session,
+    required this.error,
+  });
+  final PlaybackSession session;
+  final String error;
+
+  @override
+  Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return ColoredBox(
       color: Colors.black.withValues(alpha: .9),
@@ -766,12 +784,12 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
                 alignment: WrapAlignment.center,
                 children: [
                   FilledButton(
-                    onPressed: _session.retry,
-                    child: Text(_session.localFailure ? '重试本地播放' : '重试'),
+                    onPressed: session.retry,
+                    child: Text(session.localFailure ? '重试本地播放' : '重试'),
                   ),
-                  if (_session.localFailure)
+                  if (session.localFailure)
                     TextButton(
-                      onPressed: _session.switchOnline,
+                      onPressed: session.switchOnline,
                       child: const Text('改为在线播放'),
                     ),
                 ],

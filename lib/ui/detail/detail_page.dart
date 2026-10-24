@@ -8,7 +8,9 @@ import '../../drama_details.dart';
 import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
+import '../player/playback_handle.dart';
 import '../player/player_page.dart';
+import '../player/portrait_player_page.dart';
 import '../shell/app_shell.dart';
 import '../shell/pending_pages.dart';
 import '../widgets/cover_backdrop.dart';
@@ -185,6 +187,8 @@ class DetailPage extends StatefulWidget {
 
 class _DetailPageState extends State<DetailPage> {
   DramaDetails? _details;
+  PlaybackHandle? _handle;
+  bool _watching = false;
   final _currentEpisode = GlobalKey();
   bool _expanded = false;
   final _playFocus = FocusNode();
@@ -200,11 +204,12 @@ class _DetailPageState extends State<DetailPage> {
       AppScope.of(context).repository,
       widget.store,
       widget.drama,
-    );
+    )..addListener(_preopen);
   }
 
   @override
   void dispose() {
+    _handle?.dispose();
     _details?.dispose();
     for (final node in [
       _playFocus,
@@ -232,8 +237,62 @@ class _DetailPageState extends State<DetailPage> {
     ).showSnackBar(SnackBar(content: Text(details.error!)));
   }
 
+  bool get _phonePlayback =>
+      defaultTargetPlatform != TargetPlatform.windows &&
+      AppScope.formFactorOf(context) == FormFactor.phone;
+
+  double _startAt(int index, {required bool resume}) {
+    final watch = _details!.watch;
+    return resume &&
+            watch?.episode == _details!.episodes[index].number &&
+            !watch!.finished
+        ? watch.position
+        : 0.0;
+  }
+
+  DramaDetail get _detail {
+    final details = _details!;
+    return DramaDetail(
+      details.drama,
+      details.episodes,
+      warning: details.warning,
+    );
+  }
+
+  PlaybackHandle _open(
+    int index, {
+    required double position,
+    bool autoplay = true,
+  }) => PlaybackHandle(
+    repository: AppScope.of(context).repository,
+    store: widget.store,
+    detail: _detail,
+    index: index,
+    position: position,
+    autoplay: autoplay,
+  );
+
+  /// 手机上详情一加载完就暂停打开续播那一集：点播放即开，也提前知道视频横竖。
+  void _preopen() {
+    final details = _details!;
+    if (_handle != null ||
+        _watching ||
+        !mounted ||
+        !_ready ||
+        !details.allowed ||
+        !_phonePlayback) {
+      return;
+    }
+    final index = details.resumeIndex;
+    _handle = _open(
+      index,
+      position: _startAt(index, resume: true),
+      autoplay: false,
+    );
+  }
+
   Future<void> _play(int index, {bool resume = false}) async {
-    if (defaultTargetPlatform != TargetPlatform.windows ||
+    if (defaultTargetPlatform != TargetPlatform.windows && !_phonePlayback ||
         AppScope.of(context).television) {
       await openPage<void>(
         context,
@@ -266,20 +325,26 @@ class _DetailPageState extends State<DetailPage> {
       return;
     }
     if (!mounted || !details.allowed) return;
-    final watch = details.watch;
-    final position =
-        resume && watch?.episode == episode.number && !watch!.finished
-        ? watch.position
-        : 0.0;
+    final position = _startAt(index, resume: resume);
+    if (_phonePlayback) {
+      final handle = _handle ?? _open(index, position: position);
+      _handle = null;
+      handle.session.start(index, position: position);
+      _watching = true;
+      await Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              PortraitPlayerPage(store: widget.store, handle: handle),
+        ),
+      );
+      _watching = false;
+      return;
+    }
     await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
         builder: (_) => PlayerPage(
           store: widget.store,
-          detail: DramaDetail(
-            details.drama,
-            details.episodes,
-            warning: details.warning,
-          ),
+          detail: _detail,
           index: index,
           position: position,
         ),

@@ -38,19 +38,51 @@ class PlaybackSession extends ChangeNotifier {
     required this.repository,
     required this.store,
     required this.detail,
-    required this.player,
+    required this._player,
+    this._standby,
     required int index,
     double position = 0,
-  }) : _index = index,
+    bool autoplay = true,
+  }) : _engaged = autoplay,
+       _index = index,
        _epoch = store.profileEpoch {
     final preferences = store.playbackPreferences;
     _speed = preferences.speed;
     _quality = preferences.quality;
     _danmakuEnabled = preferences.danmaku;
     _loader = PlaybackLoader(repository);
-    _preloader = PlaybackPreloader(repository);
+    _preloader = PlaybackPreloader(repository)..addListener(_prime);
     danmaku = DanmakuController(repository)..setEnabled(_danmakuEnabled);
     store.addListener(_accessChanged);
+    _bind();
+    _saveTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => saveProgress(),
+    );
+    _healthTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_closed || !_acceptErrors || _loading || _error != null) return;
+      if (_health.stalled(
+        position: player.state.position,
+        playing: player.state.playing && _playIntent,
+        foreground: _foreground,
+        now: DateTime.now(),
+      )) {
+        unawaited(_recover('position_stalled_20s'));
+      }
+    });
+    unawaited(play(index, position: position, playWhenReady: autoplay));
+  }
+
+  void _bind() {
+    for (final subscription in _subscriptions) {
+      unawaited(subscription.cancel());
+    }
+    _subscriptions.clear();
+    final size = videoDisplaySize(player.state.videoParams);
+    if (size != null) {
+      _aspectRatio = size.width / size.height;
+      _aspectKnown = true;
+    }
     final stream = player.stream;
     _subscriptions.addAll([
       stream.error.listen(_playerError),
@@ -76,31 +108,17 @@ class PlaybackSession extends ChangeNotifier {
         final size = videoDisplaySize(parameters);
         if (size == null || _closed) return;
         _aspectRatio = size.width / size.height;
+        _aspectKnown = true;
         _notify();
       }),
     ]);
-    _saveTimer = Timer.periodic(
-      const Duration(seconds: 5),
-      (_) => saveProgress(),
-    );
-    _healthTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (_closed || !_acceptErrors || _loading || _error != null) return;
-      if (_health.stalled(
-        position: player.state.position,
-        playing: player.state.playing && _playIntent,
-        foreground: _foreground,
-        now: DateTime.now(),
-      )) {
-        unawaited(_recover('position_stalled_20s'));
-      }
-    });
-    unawaited(play(index, position: position));
   }
 
   final AppRepository repository;
   final LocalStore store;
   final DramaDetail detail;
-  final Player player;
+  Player _player;
+  Player? _standby;
   late final DanmakuController danmaku;
   late final PlaybackLoader _loader;
   late final PlaybackPreloader _preloader;
@@ -127,19 +145,32 @@ class PlaybackSession extends ChangeNotifier {
   bool _playIntent = true;
   bool _pendingError = false;
   bool _boosting = false;
+  bool _boostLocked = false;
+  bool _engaged;
   bool _staleAudio = false;
   String _loadingMessage = '正在准备播放';
   String? _error;
   String? _saveWarning;
   String? _savedProgressKey;
   PlaybackPlan? _plan;
+  PlaybackPlan? _standbyPlan;
+  int _standbyIndex = -1;
+  bool _standbyOpen = false;
+  DateTime _standbyAt = DateTime(2000);
+  double _openedAt = 0;
   double _speed = 1;
   int _quality = 0;
   bool _danmakuEnabled = true;
   double _aspectRatio = 9 / 16;
+  bool _aspectKnown = false;
   double _resumePosition = 0;
   double _unmutedVolume = 100;
 
+  Player get player => _player;
+
+  /// 已在备用播放器里打开、停在首帧的那一集；没有时为 null。
+  Player? get standby => _standbyOpen ? _standby : null;
+  int get standbyIndex => _standbyOpen ? _standbyIndex : -1;
   int get index => _index;
   Episode get episode => detail.episodes[_index];
   bool get loading => _loading;
@@ -149,7 +180,9 @@ class PlaybackSession extends ChangeNotifier {
   String? get saveWarning => _saveWarning;
   bool get ready => !_loading && _error == null;
   bool get boosting => _boosting;
+  bool get boostLocked => _boostLocked;
   double get aspectRatio => _aspectRatio;
+  bool get aspectKnown => _aspectKnown;
   double get speed => _speed;
   int get quality => _quality;
   bool get local => _plan?.local == true;
@@ -181,6 +214,8 @@ class PlaybackSession extends ChangeNotifier {
     preload: true,
   );
 
+  double get _rate => _boosting ? 2 : _speed;
+
   void _notify() {
     if (!_closed) notifyListeners();
   }
@@ -189,6 +224,7 @@ class PlaybackSession extends ChangeNotifier {
     if (_closed) return;
     if (store.profileEpoch != _epoch || store.locked) {
       _preloader.clear();
+      _dropStandby();
       _playIntent = false;
       endBoost();
       unawaited(player.pause());
@@ -241,11 +277,18 @@ class PlaybackSession extends ChangeNotifier {
       _preloader.pause();
       return;
     }
+    if (_standbyOpen &&
+        DateTime.now().difference(_standbyAt) > const Duration(minutes: 8)) {
+      _dropStandby();
+    }
+    if (_standbyIndex >= 0) return;
     final duration = state.duration.inMilliseconds;
     final position = state.position.inMilliseconds;
     if (duration <= 0 ||
         position < 2000 ||
-        (position < duration ~/ 2 && duration - position > 45000) ||
+        (_standby == null &&
+            position < duration ~/ 2 &&
+            duration - position > 45000) ||
         state.buffer.inMilliseconds - position < 5000) {
       return;
     }
@@ -359,11 +402,19 @@ class PlaybackSession extends ChangeNotifier {
     return next;
   }
 
-  Future<void> _configure(PlaybackPlan plan) async {
-    final platform = player.platform;
+  Future<void> _configure(Player target, PlaybackPlan plan) async {
+    final platform = target.platform;
     if (platform is! NativePlayer) return;
     if (Platform.isWindows) {
       await platform.setProperty('hwdec', 'd3d11va-copy');
+    } else if (Platform.isAndroid) {
+      await platform.setProperty('hwdec', 'auto-safe');
+      await platform.setProperty('hwdec-codecs', 'all');
+      await platform.setProperty('vd-lavc-skiploopfilter', 'nonkey');
+      await platform.setProperty('vd-lavc-threads', '4');
+      await platform.setProperty('vd-lavc-fast', 'yes');
+      await platform.setProperty('video-sync', 'audio');
+      await platform.setProperty('framedrop', 'vo');
     }
     await platform.setProperty(
       'demuxer-lavf-o',
@@ -391,6 +442,14 @@ class PlaybackSession extends ChangeNotifier {
     endBoost();
     _staleAudio = false;
     if (index != _index) _online = false;
+    if (recovery == null &&
+        position == 0 &&
+        _standbyOpen &&
+        _standbyIndex == index &&
+        !_online) {
+      return _swap(index, playWhenReady);
+    }
+    _dropStandby();
     final warmed = recovery == null
         ? _preloader.take(
             detail.drama,
@@ -412,6 +471,7 @@ class PlaybackSession extends ChangeNotifier {
       _playIntent = playWhenReady;
     }
     _resumePosition = position;
+    _openedAt = position;
     _index = index;
     _loading = true;
     _error = null;
@@ -459,7 +519,8 @@ class PlaybackSession extends ChangeNotifier {
           return;
         }
         if (plan.url.isEmpty) throw AppFailure('站源未返回播放地址，请重试');
-        await _configure(plan);
+        await _configure(player, plan);
+        await _limitCache(player, !_engaged);
         _plan = plan;
         installed = true;
         _acceptErrors = true;
@@ -476,7 +537,7 @@ class PlaybackSession extends ChangeNotifier {
         if (!_current(ticket)) return;
         _openedIndex = index;
         _health.reset();
-        await _setRate(_speed);
+        await _setRate(_rate);
         if (!_current(ticket)) return;
         _loading = false;
         _notify();
@@ -505,6 +566,142 @@ class PlaybackSession extends ChangeNotifier {
       if (warmed != null && !installed) await _release(warmed.session);
       if (retained != null) await _release(retained!.session);
     }
+  }
+
+  /// 换到已在备用播放器里打开的那一集：直接播放，旧播放器停下来改作备用。
+  Future<void> _swap(int index, bool playWhenReady) async {
+    final plan = _standbyPlan!;
+    final next = _standby!;
+    _preloader.clear();
+    final ticket = ++_generation;
+    _seekSequence++;
+    danmaku.setPlan(null);
+    _acceptErrors = false;
+    _pendingError = false;
+    _errorTimer?.cancel();
+    _health.reset();
+    _recovery.reset();
+    _playIntent = playWhenReady;
+    _resumePosition = 0;
+    _openedAt = 0;
+    _index = index;
+    _error = null;
+    _localFailure = false;
+    _standbyPlan = null;
+    _standbyIndex = -1;
+    _standbyOpen = false;
+    try {
+      await _serialize(() async {
+        if (!_current(ticket)) {
+          await _release(plan.session);
+          return;
+        }
+        await saveProgress();
+        final previous = _player;
+        final previousPlan = _plan;
+        _openedIndex = -1;
+        _player = next;
+        _standby = previous;
+        _plan = plan;
+        _bind();
+        _acceptErrors = true;
+        _openedIndex = index;
+        await _limitCache(next, false);
+        await next.setVolume(previous.state.volume);
+        await _setRate(_rate);
+        if (_foreground && _playIntent) await next.play();
+        _loading = false;
+        _notify();
+        danmaku.setPlan(plan);
+        _syncDanmaku();
+        await previous.stop();
+        if (previousPlan != null) await _release(previousPlan.session);
+      });
+    } catch (_) {
+      if (_current(ticket)) {
+        _loading = false;
+        _queueRecovery('open_exception');
+      }
+    }
+  }
+
+  void _prime() {
+    final standby = _standby;
+    final next = _index + 1;
+    if (_closed ||
+        standby == null ||
+        _standbyIndex >= 0 ||
+        !_preloader.ready ||
+        next >= detail.episodes.length) {
+      return;
+    }
+    _standbyIndex = next;
+    final plan = _preloader.take(
+      detail.drama,
+      detail.episodes[next],
+      quality: _quality,
+      online: _online,
+    );
+    if (plan == null) {
+      _standbyIndex = -1;
+      return;
+    }
+    _standbyPlan = plan;
+    unawaited(_open(standby, plan));
+  }
+
+  Future<void> _open(Player standby, PlaybackPlan plan) async {
+    try {
+      await _configure(standby, plan);
+      await _limitCache(standby, true);
+      await standby.open(
+        Media(plan.url, httpHeaders: plan.headers),
+        play: false,
+      );
+    } catch (_) {
+      if (identical(_standbyPlan, plan)) _dropStandby();
+      return;
+    }
+    if (_closed || !identical(_standbyPlan, plan)) return;
+    _standbyOpen = true;
+    _standbyAt = DateTime.now();
+    _notify();
+  }
+
+  void _dropStandby() {
+    final plan = _standbyPlan;
+    final opened = _standbyOpen || plan != null;
+    _standbyPlan = null;
+    _standbyIndex = -1;
+    _standbyOpen = false;
+    if (opened) unawaited(_standby?.stop().catchError((Object _) {}));
+    if (plan != null) unawaited(_release(plan.session));
+  }
+
+  /// 暂停预开时只缓冲开头一小段，正式播放后恢复正常缓冲。
+  Future<void> _limitCache(Player target, bool limited) async {
+    final platform = target.platform;
+    if (platform is! NativePlayer) return;
+    await platform.setProperty(
+      'demuxer-max-bytes',
+      '${(limited ? 4 : 32) * 1024 * 1024}',
+    );
+  }
+
+  /// 从详情页暂停预开的状态开始播放；集数或起点不同时改为从头加载。
+  void start(int index, {double position = 0}) {
+    if (!_usable) return;
+    final wasEngaged = _engaged;
+    _engaged = true;
+    if (index != _index ||
+        (position - _openedAt).abs() > .5 ||
+        _error != null) {
+      unawaited(play(index, position: position));
+      return;
+    }
+    _playIntent = true;
+    if (!wasEngaged) unawaited(_limitCache(player, false));
+    if (ready) unawaited(player.play());
   }
 
   Future<void> retry() =>
@@ -598,7 +795,32 @@ class PlaybackSession extends ChangeNotifier {
     });
   }
 
+  /// 按住立即 2 倍速（竖屏左侧长按）。
+  void holdBoost() {
+    if (!_usable || _boosting) return;
+    _boostTimer?.cancel();
+    _boostTimer = null;
+    _boosting = true;
+    unawaited(_setRate(2));
+    _notify();
+  }
+
+  /// 锁定后暂停、切集都保持 2 倍速，只有解除锁定或退出播放才恢复。
+  void setBoostLocked(bool locked) {
+    if (_boostLocked == locked) return;
+    if (locked) {
+      holdBoost();
+      _boostLocked = true;
+      _notify();
+    } else {
+      _boostLocked = false;
+      endBoost();
+      _notify();
+    }
+  }
+
   bool endBoost() {
+    if (_boostLocked) return false;
     final boosted = _boosting;
     _boostTimer?.cancel();
     _boostTimer = null;
@@ -689,7 +911,7 @@ class PlaybackSession extends ChangeNotifier {
   }
 
   Future<void> saveProgress() async {
-    if (_openedIndex < 0 || store.profileEpoch != _epoch) return;
+    if (!_engaged || _openedIndex < 0 || store.profileEpoch != _epoch) return;
     final position = player.state.position.inMilliseconds / 1000;
     final duration = player.state.duration.inMilliseconds / 1000;
     if (position < .1) return;
@@ -734,11 +956,15 @@ class PlaybackSession extends ChangeNotifier {
     _preloader.dispose();
     final session = _plan?.session ?? '';
     unawaited(_release(session));
+    final standbyPlan = _standbyPlan;
+    if (standbyPlan != null) unawaited(_release(standbyPlan.session));
+    final standby = _standby;
     unawaited(_loader.close().catchError((Object _) {}));
     unawaited(
       _operations.catchError((Object _) {}).then((_) async {
         await _rates.catchError((Object _) {});
         await player.dispose();
+        await standby?.dispose();
       }),
     );
     super.dispose();
