@@ -48,6 +48,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
   bool _edgeHinted = false;
   bool _holding = false;
   bool _overMask = false;
+  int _heldIndex = -1;
   bool _dragging = false;
   double? _seekValue;
   double? _seekTarget;
@@ -114,6 +115,8 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
 
   void _changed() {
     _bind();
+    // 按住 2 倍速时自动连播换了集，原来那页的手势随页面消失，当作松手处理。
+    if (_holding && _session.index != _heldIndex) _pressEnd();
     if (!_scrolling &&
         _pages.hasClients &&
         _pages.page?.round() != _session.index) {
@@ -195,6 +198,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
       unawaited(HapticFeedback.selectionClick());
       setState(() {
         _holding = true;
+        _heldIndex = _session.index;
         _overMask = false;
       });
     } else {
@@ -358,10 +362,12 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
             ),
           if (current) ...[
             DanmakuOverlay(
+              key: const ValueKey('danmaku'),
               controller: session.danmaku,
               aspectRatio: session.aspectRatio,
             ),
             LayoutBuilder(
+              key: const ValueKey('gestures'),
               builder: (context, constraints) => GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: session.togglePlayback,
@@ -423,7 +429,9 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
           ),
         if (session.error case final error?)
           PlaybackFailure(session: session, error: error),
+        // 前面有按状态出现的层，常驻控件用 key 固定，否则拖动进度条时会被重建、拖不动。
         Positioned(
+          key: const ValueKey('header'),
           left: 4,
           right: 12,
           top: padding.top,
@@ -440,6 +448,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
             ),
           ),
         Positioned(
+          key: const ValueKey('progress'),
           left: 16,
           right: 16,
           bottom: bottom + _maskHeight,
@@ -447,6 +456,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
           child: _progress(context),
         ),
         Positioned(
+          key: const ValueKey('episodes'),
           left: 16,
           right: 16,
           bottom: bottom + 16,
@@ -582,7 +592,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
                 ),
               ),
               Text(
-                '第 ${session.episode.number} 集 · 共 ${session.detail.episodes.length} 集',
+                '第 ${session.episode.number} 集',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: .78),
                   fontSize: 12,
