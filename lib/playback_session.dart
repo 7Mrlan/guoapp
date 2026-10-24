@@ -179,6 +179,9 @@ class PlaybackSession extends ChangeNotifier {
   bool get localFailure => _localFailure;
   String? get saveWarning => _saveWarning;
   bool get ready => !_loading && _error == null;
+
+  /// 用户主动暂停（或播完停住）；不随播放器开播前的瞬间状态闪烁。
+  bool get paused => !_playIntent;
   bool get boosting => _boosting;
   bool get boostLocked => _boostLocked;
   double get aspectRatio => _aspectRatio;
@@ -572,15 +575,19 @@ class PlaybackSession extends ChangeNotifier {
     }
   }
 
-  /// 换到已在备用播放器里打开的那一集：直接播放，旧播放器停下来改作备用。
+  /// 换到已在备用播放器里打开的那一集：当场换过去开播，旧播放器停下来改作备用。
+  /// 交换必须同步完成，否则翻页结束时会先露出上一集的画面。
   Future<void> _swap(int index, bool playWhenReady) async {
     final plan = _standbyPlan!;
     final next = _standby!;
+    final previous = _player;
+    final previousPlan = _plan;
+    final volume = previous.state.volume;
+    // 先记下正在离开的这一集；saveProgress 在第一次等待前就读完了进度。
+    unawaited(saveProgress());
     _preloader.clear();
     final ticket = ++_generation;
     _seekSequence++;
-    danmaku.setPlan(null);
-    _acceptErrors = false;
     _pendingError = false;
     _errorTimer?.cancel();
     _health.reset();
@@ -591,41 +598,28 @@ class PlaybackSession extends ChangeNotifier {
     _index = index;
     _error = null;
     _localFailure = false;
+    _loading = false;
     _standbyPlan = null;
     _standbyIndex = -1;
     _standbyOpen = false;
+    _player = next;
+    _standby = previous;
+    _plan = plan;
+    _bind();
+    _openedIndex = index;
+    _acceptErrors = true;
+    unawaited(previous.stop().catchError((Object _) {}));
+    if (previousPlan != null) unawaited(_release(previousPlan.session));
+    danmaku.setPlan(plan);
+    _notify();
+    _syncDanmaku();
     try {
-      await _serialize(() async {
-        if (!_current(ticket)) {
-          await _release(plan.session);
-          return;
-        }
-        await saveProgress();
-        final previous = _player;
-        final previousPlan = _plan;
-        _openedIndex = -1;
-        _player = next;
-        _standby = previous;
-        _plan = plan;
-        _bind();
-        _acceptErrors = true;
-        _openedIndex = index;
-        await _limitCache(next, false);
-        await next.setVolume(previous.state.volume);
-        await _setRate(_rate);
-        if (_foreground && _playIntent) await next.play();
-        _loading = false;
-        _notify();
-        danmaku.setPlan(plan);
-        _syncDanmaku();
-        await previous.stop();
-        if (previousPlan != null) await _release(previousPlan.session);
-      });
+      await _limitCache(next, false);
+      await next.setVolume(volume);
+      await _setRate(_rate);
+      if (_current(ticket) && _foreground && _playIntent) await next.play();
     } catch (_) {
-      if (_current(ticket)) {
-        _loading = false;
-        _queueRecovery('open_exception');
-      }
+      if (_current(ticket)) _queueRecovery('open_exception');
     }
   }
 

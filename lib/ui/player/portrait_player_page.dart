@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -167,6 +168,27 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
     return false;
   }
 
+  /// 鼠标滚轮滚一格翻一页；翻页动画进行中的多余滚动忽略。
+  void _wheel(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent || event.scrollDelta.dy == 0) return;
+    GestureBinding.instance.pointerSignalResolver.register(event, (_) {
+      if (_scrolling) return;
+      final target = _session.index + (event.scrollDelta.dy > 0 ? 1 : -1);
+      if (target < 0) return _say('已经是第一集');
+      if (target >= _session.detail.episodes.length) {
+        return _say('已经是最后一集');
+      }
+      setState(() => _scrolling = true);
+      unawaited(
+        _pages.animateToPage(
+          target,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    });
+  }
+
   void _pressStart(LongPressStartDetails details, double width) {
     if (details.localPosition.dx < width / 5) {
       if (!_session.boostLocked) _session.holdBoost();
@@ -301,54 +323,58 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
         : index == session.standbyIndex
         ? session.standby
         : null;
+    // 加载中先不显示画面，免得露出上一集停住的最后一帧。
     final waiting = player == null || current && session.loading;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (player != null)
-          Video(
-            key: ValueKey(player),
-            controller: widget.handle.video(player),
-            controls: NoVideoControls,
-            fill: Colors.black,
-            pauseUponEnteringBackgroundMode: false,
-          ),
-        if (waiting)
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              spacing: 16,
-              children: [
-                Text(
-                  '第 ${session.detail.episodes[index].number} 集',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
+    return Listener(
+      onPointerSignal: _wheel,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (!waiting)
+            Video(
+              key: ValueKey(player),
+              controller: widget.handle.video(player),
+              controls: NoVideoControls,
+              fill: Colors.black,
+              pauseUponEnteringBackgroundMode: false,
+            ),
+          if (waiting)
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 16,
+                children: [
+                  Text(
+                    '第 ${session.detail.episodes[index].number} 集',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                if (current) const CircularProgressIndicator(),
-              ],
+                  if (current) const CircularProgressIndicator(),
+                ],
+              ),
             ),
-          ),
-        if (current) ...[
-          DanmakuOverlay(
-            controller: session.danmaku,
-            aspectRatio: session.aspectRatio,
-          ),
-          LayoutBuilder(
-            builder: (context, constraints) => GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: session.togglePlayback,
-              onLongPressStart: (details) =>
-                  _pressStart(details, constraints.maxWidth),
-              onLongPressMoveUpdate: _pressMove,
-              onLongPressEnd: (_) => _pressEnd(),
-              onLongPressCancel: _pressEnd,
+          if (current) ...[
+            DanmakuOverlay(
+              controller: session.danmaku,
+              aspectRatio: session.aspectRatio,
             ),
-          ),
+            LayoutBuilder(
+              builder: (context, constraints) => GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: session.togglePlayback,
+                onLongPressStart: (details) =>
+                    _pressStart(details, constraints.maxWidth),
+                onLongPressMoveUpdate: _pressMove,
+                onLongPressEnd: (_) => _pressEnd(),
+                onLongPressCancel: _pressEnd,
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -373,7 +399,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
             child: _Shade(height: 220, top: false),
           ),
         ),
-        if (session.ready && !state.playing && !state.buffering)
+        if (session.ready && session.paused)
           Center(
             child: IgnorePointer(
               child: Container(

@@ -454,4 +454,21 @@ void main() {
     expect(repository.preloaded, isEmpty);
     expect(session.standbyIndex, -1);
   });
+
+  test('switching to the waiting episode swaps players at once', () async {
+    final repository = _PlaybackRepository();
+    final store = await openStore();
+    final standby = FakePlayer();
+    final (session, player) = await _open(repository, store, standby: standby);
+    await _settle(player);
+
+    final switching = session.play(1);
+
+    expect(identical(session.player, standby), isTrue);
+    expect(session.ready, isTrue);
+    expect(session.paused, isFalse);
+    await switching;
+    expect(standby.state.playing, isTrue);
+    expect(store.watched(_show.id)!.episode, 1);
+  });
 }
