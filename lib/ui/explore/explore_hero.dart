@@ -150,6 +150,7 @@ class ExploreHero extends StatelessWidget {
           style: TextStyle(
             fontSize: metrics.meta - 1,
             fontWeight: FontWeight.w500,
+            height: 1.3,
             color: muted,
           ),
         ),
@@ -168,7 +169,11 @@ class ExploreHero extends StatelessWidget {
           meta,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: metrics.meta, color: muted),
+          style: TextStyle(
+            fontSize: metrics.meta,
+            height: 1.3,
+            color: muted,
+          ),
         ),
         if (progress case final progress?)
           Padding(
@@ -182,46 +187,50 @@ class ExploreHero extends StatelessWidget {
               stopIndicatorColor: Colors.transparent,
             ),
           ),
-        const Spacer(),
-        Row(
-          spacing: 12 * k,
-          children: [
-            FocusRing(
-              radius: 999,
-              child: FilledButton.icon(
-                autofocus: television,
-                onPressed: onPlay,
-                style: FilledButton.styleFrom(
-                  backgroundColor: colors.primaryFixedDim,
-                  foregroundColor: colors.onPrimaryFixed,
-                  minimumSize: buttonSize,
-                  padding: EdgeInsets.fromLTRB(14 * k, 0, 20 * k, 0),
-                  iconSize: 18 * k,
-                  textStyle: TextStyle(
-                    fontSize: metrics.meta,
-                    fontWeight: FontWeight.w700,
+        Expanded(
+          child: Align(
+            alignment: Alignment.bottomLeft,
+            child: Row(
+              spacing: 12 * k,
+              children: [
+                FocusRing(
+                  radius: 999,
+                  child: FilledButton.icon(
+                    autofocus: television,
+                    onPressed: onPlay,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: colors.primaryFixedDim,
+                      foregroundColor: colors.onPrimaryFixed,
+                      minimumSize: buttonSize,
+                      padding: EdgeInsets.fromLTRB(14 * k, 0, 20 * k, 0),
+                      iconSize: 18 * k,
+                      textStyle: TextStyle(
+                        fontSize: metrics.meta,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: Text(action),
                   ),
                 ),
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: Text(action),
-              ),
+                if (metrics.detail)
+                  FocusRing(
+                    radius: 999,
+                    child: FilledButton(
+                      onPressed: onDetail,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.16),
+                        foregroundColor: Colors.white,
+                        minimumSize: buttonSize,
+                        padding: EdgeInsets.symmetric(horizontal: 20 * k),
+                        textStyle: TextStyle(fontSize: metrics.meta),
+                      ),
+                      child: const Text('详情'),
+                    ),
+                  ),
+              ],
             ),
-            if (metrics.detail)
-              FocusRing(
-                radius: 999,
-                child: FilledButton(
-                  onPressed: onDetail,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.16),
-                    foregroundColor: Colors.white,
-                    minimumSize: buttonSize,
-                    padding: EdgeInsets.symmetric(horizontal: 20 * k),
-                    textStyle: TextStyle(fontSize: metrics.meta),
-                  ),
-                  child: const Text('详情'),
-                ),
-              ),
-          ],
+          ),
         ),
       ],
     );
