@@ -532,30 +532,42 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
             ],
           ),
         ),
-        Positioned(
-          left: 12,
-          right: 12,
-          bottom: 36,
-          height: 20,
-          child: _progress(context, thumb: 6),
-        ),
+        // 底栏：进度条在上，按钮行在下。
         Positioned(
           left: 4,
           right: 4,
           bottom: 0,
-          height: 40,
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _playButton(size: 40, iconSize: 26),
-              const SizedBox(width: 4),
-              _clock(13),
-              const Spacer(),
-              if (session.danmakuSupported) _danmakuButton(context),
-              _icon(
-                Icons.fullscreen_rounded,
-                '全屏',
-                () => _rotate(false),
-                size: 40,
+              // 拖动区域保留 20 高，下移 4 压住按钮行顶边，进度条中线离底边 46。
+              Transform.translate(
+                offset: const Offset(0, 4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: SizedBox(
+                    height: 20,
+                    child: _progress(context, thumb: 6),
+                  ),
+                ),
+              ),
+              SizedBox(
+                height: 40,
+                child: Row(
+                  children: [
+                    _playButton(size: 40, iconSize: 26),
+                    const SizedBox(width: 4),
+                    _clock(13),
+                    const Spacer(),
+                    if (session.danmakuSupported) _danmakuButton(context),
+                    _icon(
+                      Icons.fullscreen_rounded,
+                      '全屏',
+                      () => _rotate(false),
+                      size: 40,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
