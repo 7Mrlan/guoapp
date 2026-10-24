@@ -18,6 +18,17 @@ import CFNetwork
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "DeviceSettings") {
       let channel = FlutterMethodChannel(name: "duanju/device", binaryMessenger: registrar.messenger())
       channel.setMethodCallHandler { call, result in
+        if call.method == "battery" {
+          let device = UIDevice.current
+          device.isBatteryMonitoringEnabled = true
+          guard device.batteryLevel >= 0 else {
+            result(nil)
+            return
+          }
+          result(["level": Int((device.batteryLevel * 100).rounded()),
+                  "charging": device.batteryState == .charging || device.batteryState == .full])
+          return
+        }
         guard call.method == "systemProxy" else {
           result(FlutterMethodNotImplemented)
           return

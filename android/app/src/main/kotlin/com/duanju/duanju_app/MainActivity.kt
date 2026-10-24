@@ -21,6 +21,7 @@ import android.net.ConnectivityManager
 import android.net.Uri
 import android.util.Rational
 import android.view.InputDevice
+import android.view.OrientationEventListener
 import android.view.WindowManager
 import android.provider.Settings
 import androidx.annotation.ChecksSdkIntAtLeast
@@ -33,6 +34,7 @@ class MainActivity : FlutterActivity() {
     private var thermalHeadroom: Double? = null
     private var deviceChannel: MethodChannel? = null
     private var televisionMode = false
+    private var orientationListener: OrientationEventListener? = null
 
     @Suppress("DEPRECATION")
     private fun isTelevisionDevice(): Boolean {
@@ -86,6 +88,50 @@ class MainActivity : FlutterActivity() {
     override fun setRequestedOrientation(requestedOrientation: Int) {
         super.setRequestedOrientation(
             if (televisionMode) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else requestedOrientation
+        )
+    }
+
+    /// 播放页手动切横竖屏：先锁定方向，等手机真的转到这个方向、且系统开着自动旋转时再放开，之后随手机旋转。
+    private fun setPlayerOrientation(mode: String) {
+        orientationListener?.disable()
+        orientationListener = null
+        val landscape = mode == "landscape"
+        requestedOrientation = when (mode) {
+            "landscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+        if (!landscape && mode != "portrait") return
+        val listener = object : OrientationEventListener(this) {
+            override fun onOrientationChanged(angle: Int) {
+                if (angle == ORIENTATION_UNKNOWN) return
+                val reached = if (landscape) angle in 60..120 || angle in 240..300
+                    else angle <= 30 || angle >= 330
+                val rotation = Settings.System.getInt(
+                    contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0
+                )
+                if (!reached || rotation != 1) return
+                disable()
+                orientationListener = null
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
+        }
+        if (listener.canDetectOrientation()) {
+            listener.enable()
+            orientationListener = listener
+        }
+    }
+
+    private fun battery(): Map<String, Any>? {
+        val battery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return null
+        val level = battery.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = battery.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+        if (level < 0 || scale <= 0) return null
+        val status = battery.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        return mapOf(
+            "level" to level * 100 / scale,
+            "charging" to (status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                status == BatteryManager.BATTERY_STATUS_FULL)
         )
     }
 
@@ -161,6 +207,11 @@ class MainActivity : FlutterActivity() {
                                 result.success(null)
                             }
                         }
+                        "setPlayerOrientation" -> {
+                            setPlayerOrientation(call.argument<String>("mode") ?: "auto")
+                            result.success(null)
+                        }
+                        "battery" -> result.success(runCatching { battery() }.getOrNull())
                         "playbackPower" -> result.success(runCatching { playbackPower() }.getOrNull())
                         "compatibleRendering" -> result.success(compatibleRendering())
                         "setCompatibleRendering" -> {
@@ -313,6 +364,8 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        orientationListener?.disable()
+        orientationListener = null
         deviceChannel?.setMethodCallHandler(null)
         deviceChannel = null
         super.cleanUpFlutterEngine(flutterEngine)

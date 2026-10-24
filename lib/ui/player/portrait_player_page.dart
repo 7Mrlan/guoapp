@@ -9,12 +9,12 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../local_store.dart';
 import '../../models.dart';
-import '../../playback_preferences.dart';
 import '../../playback_session.dart';
 import '../app_scope.dart';
 import '../theme/app_theme.dart';
 import 'danmaku_overlay.dart';
 import 'episode_grid.dart';
+import 'playback_sheets.dart';
 import 'playback_handle.dart';
 import 'player_surface.dart';
 
@@ -232,42 +232,13 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
     });
   }
 
-  ThemeData _dark(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.brightness == Brightness.dark
-        ? theme
-        : AppTheme.build(
-            theme.colorScheme.primary,
-            Brightness.dark,
-            television: false,
-          );
-  }
-
-  Future<void> _sheet(WidgetBuilder builder) {
-    final dark = _dark(context);
-    final height = MediaQuery.sizeOf(context).height * .6;
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: dark.colorScheme.surfaceContainerLow,
-      constraints: BoxConstraints.tightFor(height: height),
-      // 上拉栏的 Material 按页面外的主题给文字定色，浅色模式下会是深色字，这里改回深色主题的前景色。
-      builder: (context) => Theme(
-        data: dark,
-        child: DefaultTextStyle.merge(
-          style: TextStyle(color: dark.colorScheme.onSurface),
-          child: Builder(builder: builder),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openSettings() => _sheet(
-    (_) => _PlaybackSettings(session: _session, onFailure: _saveFailed),
+  Future<void> _openSettings() => showPlayerSheet(
+    context,
+    (_) => PlaybackSettings(session: _session, onFailure: _saveFailed),
   );
 
-  Future<void> _openEpisodes() => _sheet(
+  Future<void> _openEpisodes() => showPlayerSheet(
+    context,
     (_) => _EpisodeSheet(
       session: _session,
       canDownload:
@@ -288,7 +259,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
 
   @override
   Widget build(BuildContext context) {
-    final dark = _dark(context);
+    final dark = playerTheme(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: AppTheme.systemBars(Brightness.dark),
       child: Theme(
@@ -806,142 +777,6 @@ class _Shade extends StatelessWidget {
   );
 }
 
-class _SheetHeader extends StatelessWidget {
-  const _SheetHeader({required this.children});
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 48,
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-      child: Row(spacing: 8, children: children),
-    ),
-  );
-}
-
-const _sheetTitle = TextStyle(fontSize: 20, fontWeight: FontWeight.w700);
-
-class _PlaybackSettings extends StatelessWidget {
-  const _PlaybackSettings({required this.session, required this.onFailure});
-  final PlaybackSession session;
-  final VoidCallback onFailure;
-
-  Future<void> _change(Future<void> Function() change) async {
-    try {
-      await change();
-    } catch (_) {
-      onFailure();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: session,
-    builder: (context, _) {
-      final colors = Theme.of(context).colorScheme;
-      final label = TextStyle(fontSize: 14, color: colors.onSurfaceVariant);
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _SheetHeader(
-            children: [
-              const Expanded(child: Text('播放设置', style: _sheetTitle)),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded),
-                tooltip: '关闭',
-              ),
-            ],
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              children: [
-                Text('倍速', style: label),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final speed in playbackSpeeds)
-                      _Choice(
-                        label: '${speed}x',
-                        selected: speed == session.speed,
-                        onSelected: () =>
-                            _change(() => session.setSpeed(speed)),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Text('清晰度', style: label),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: session.local
-                      ? [
-                          _Choice(
-                            label: session.qualityLabel,
-                            selected: true,
-                            onSelected: null,
-                          ),
-                        ]
-                      : [
-                          for (final quality in [...session.qualities, 0])
-                            _Choice(
-                              label: quality == 0
-                                  ? (session.quality == 0
-                                        ? session.qualityLabel
-                                        : '自动')
-                                  : '${quality}P',
-                              selected: quality == session.quality,
-                              onSelected: session.ready
-                                  ? () => _change(
-                                      () => session.setQuality(quality),
-                                    )
-                                  : null,
-                            ),
-                        ],
-                ),
-                if (session.danmakuSupported) ...[
-                  const SizedBox(height: 8),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('弹幕'),
-                    value: session.danmakuEnabled,
-                    onChanged: (_) => _change(session.toggleDanmaku),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-class _Choice extends StatelessWidget {
-  const _Choice({
-    required this.label,
-    required this.selected,
-    required this.onSelected,
-  });
-  final String label;
-  final bool selected;
-  final VoidCallback? onSelected;
-
-  @override
-  Widget build(BuildContext context) => ChoiceChip(
-    label: Text(label),
-    selected: selected,
-    showCheckmark: false,
-    shape: const StadiumBorder(),
-    onSelected: onSelected == null ? null : (_) => onSelected!(),
-  );
-}
-
 class _EpisodeSheet extends StatefulWidget {
   const _EpisodeSheet({
     required this.session,
@@ -981,13 +816,13 @@ class _EpisodeSheetState extends State<_EpisodeSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SheetHeader(
+          SheetHeader(
             children: _selecting
                 ? [
                     Expanded(
                       child: Text(
                         '已选 ${_selected.length} 集',
-                        style: _sheetTitle,
+                        style: sheetTitle,
                       ),
                     ),
                     TextButton(
@@ -1015,7 +850,7 @@ class _EpisodeSheetState extends State<_EpisodeSheet> {
                     ),
                   ]
                 : [
-                    const Text('选集', style: _sheetTitle),
+                    const Text('选集', style: sheetTitle),
                     Expanded(
                       child: Text(
                         '${_status(drama)}共 ${episodes.length} 集',

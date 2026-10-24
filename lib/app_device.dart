@@ -51,4 +51,42 @@ class AppDevice {
       return false;
     }
   }
+
+  /// 播放页手动切横竖屏。Android 先锁定，手机转到该方向后恢复随系统旋转；
+  /// 其他平台一直锁定，直到传 [PlayerOrientation.auto]。
+  static Future<void> setPlayerOrientation(
+    PlayerOrientation orientation,
+  ) async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        await channel.invokeMethod<void>('setPlayerOrientation', {
+          'mode': orientation.name,
+        });
+      } catch (_) {}
+      return;
+    }
+    try {
+      await SystemChrome.setPreferredOrientations(switch (orientation) {
+        PlayerOrientation.landscape => const [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ],
+        PlayerOrientation.portrait => const [DeviceOrientation.portraitUp],
+        PlayerOrientation.auto => const [],
+      });
+    } catch (_) {}
+  }
+
+  static Future<({int level, bool charging})?> battery() async {
+    try {
+      final data = await channel.invokeMapMethod<String, dynamic>('battery');
+      final level = data?['level'];
+      if (level is! int) return null;
+      return (level: level, charging: data?['charging'] == true);
+    } catch (_) {
+      return null;
+    }
+  }
 }
+
+enum PlayerOrientation { landscape, portrait, auto }
