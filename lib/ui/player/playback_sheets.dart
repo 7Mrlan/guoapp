@@ -16,22 +16,25 @@ ThemeData playerTheme(BuildContext context) {
         );
 }
 
-/// 竖屏约占屏幕 60% 高，横屏时屏幕矮，占 90%。
-Future<void> showPlayerSheet(BuildContext context, WidgetBuilder builder) {
-  final dark = playerTheme(context);
-  final size = MediaQuery.sizeOf(context);
-  final height = size.height * (size.width > size.height ? .9 : .6);
+/// 约占屏幕 60% 高。[dark] 为 false 时跟随界面的浅色 / 深色。
+Future<void> showPlayerSheet(
+  BuildContext context,
+  WidgetBuilder builder, {
+  bool dark = true,
+}) {
+  final theme = dark ? playerTheme(context) : Theme.of(context);
+  final height = MediaQuery.sizeOf(context).height * .6;
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    backgroundColor: dark.colorScheme.surfaceContainerLow,
+    backgroundColor: theme.colorScheme.surfaceContainerLow,
     constraints: BoxConstraints.tightFor(height: height),
-    // 上拉栏的 Material 按页面外的主题给文字定色，浅色模式下会是深色字，这里改回深色主题的前景色。
+    // 上拉栏的 Material 按页面外的主题给文字定色，可能和上拉栏的主题不一致，这里改回所用主题的前景色。
     builder: (context) => Theme(
-      data: dark,
+      data: theme,
       child: DefaultTextStyle.merge(
-        style: TextStyle(color: dark.colorScheme.onSurface),
+        style: TextStyle(color: theme.colorScheme.onSurface),
         child: Builder(builder: builder),
       ),
     ),

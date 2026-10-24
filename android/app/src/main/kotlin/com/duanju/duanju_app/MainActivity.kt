@@ -166,6 +166,10 @@ class MainActivity : FlutterActivity() {
         } else isTelevisionDevice()
         super.onCreate(savedInstanceState)
         if (televisionMode) requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        // 系统默认的旋转动画会把旧画面拉伸着转过去，直到 Flutter 按新尺寸画出来；改成淡入淡出。
+        window.attributes = window.attributes.apply {
+            rotationAnimation = WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
             window.isStatusBarContrastEnforced = false
