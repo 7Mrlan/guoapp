@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -71,13 +72,16 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
     _hintTimer?.cancel();
     _seekTimer?.cancel();
     _pages.dispose();
-    widget.handle.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) =>
-      _session.setForeground(state == AppLifecycleState.resumed);
+      _session.setForeground(
+        state == AppLifecycleState.resumed ||
+            defaultTargetPlatform == TargetPlatform.windows &&
+                state == AppLifecycleState.inactive,
+      );
 
   void _bind() {
     final player = _session.player;
@@ -269,7 +273,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
                 child: PageView.builder(
                   controller: _pages,
                   scrollDirection: Axis.vertical,
-                  physics: const BouncingScrollPhysics(),
+                  physics: const _PagePhysics(),
                   itemCount: _session.detail.episodes.length,
                   itemBuilder: _page,
                 ),
@@ -731,6 +735,19 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
       ],
     ),
   );
+}
+
+/// 比默认弹簧硬一些，翻页更利落；到第一集或最后一集时仍回弹。
+class _PagePhysics extends BouncingScrollPhysics {
+  const _PagePhysics({super.parent});
+
+  @override
+  _PagePhysics applyTo(ScrollPhysics? ancestor) =>
+      _PagePhysics(parent: buildParent(ancestor));
+
+  @override
+  SpringDescription get spring =>
+      SpringDescription.withDampingRatio(mass: .5, stiffness: 400, ratio: 1);
 }
 
 class _Shade extends StatelessWidget {

@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../local_store.dart';
@@ -14,49 +12,35 @@ import '../app_scope.dart';
 import '../theme/app_theme.dart';
 import '../widgets/focus_ring.dart';
 import 'episode_grid.dart';
+import 'playback_handle.dart';
 import 'player_surface.dart';
 
 const _panelWidth = 360.0;
 
+/// 宽屏播放页：左边视频、右边选集。窗口窄到手机宽度时换成竖屏播放页。
 class PlayerPage extends StatefulWidget {
-  const PlayerPage({
-    super.key,
-    required this.store,
-    required this.detail,
-    required this.index,
-    this.position = 0,
-  });
+  const PlayerPage({super.key, required this.store, required this.handle});
   final LocalStore store;
-  final DramaDetail detail;
-  final int index;
-  final double position;
+  final PlaybackHandle handle;
 
   @override
   State<PlayerPage> createState() => _PlayerPageState();
 }
 
 class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
-  final _player = Player(
-    configuration: const PlayerConfiguration(
-      bufferSize: 32 * 1024 * 1024,
-      logLevel: MPVLogLevel.error,
-    ),
-  );
-  late final _video = VideoController(_player);
   final _focus = FocusNode(debugLabel: 'player');
   final _surfaceKey = GlobalKey();
   final _hint = ValueNotifier('');
   final _selected = <int>{};
   Timer? _hintTimer;
-  PlaybackSession? _session;
   late bool _wide = widget.store.playerWide;
   bool _fullscreen = false;
   bool _seekHeld = false;
   bool _selecting = false;
 
-  PlaybackSession get _playback => _session!;
-  Drama get _drama => widget.detail.drama;
-  List<Episode> get _episodes => widget.detail.episodes;
+  PlaybackSession get _playback => widget.handle.session;
+  Drama get _drama => _playback.detail.drama;
+  List<Episode> get _episodes => _playback.detail.episodes;
 
   @override
   void initState() {
@@ -65,32 +49,18 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _session ??= PlaybackSession(
-      repository: AppScope.of(context).repository,
-      store: widget.store,
-      detail: widget.detail,
-      player: _player,
-      index: widget.index,
-      position: widget.position,
-    );
-  }
-
-  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _hintTimer?.cancel();
     _hint.dispose();
     _focus.dispose();
-    _session?.dispose();
     if (_fullscreen) unawaited(_setFullScreen(false));
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _session?.setForeground(
+    _playback.setForeground(
       state == AppLifecycleState.resumed ||
           defaultTargetPlatform == TargetPlatform.windows &&
               state == AppLifecycleState.inactive,
@@ -249,8 +219,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         child: ColoredBox(
           color: Colors.black,
           child: PlayerSurface(
-            session: _playback,
-            video: _video,
+            handle: widget.handle,
             hint: _hint,
             fullscreen: _fullscreen,
             wide: _wide,

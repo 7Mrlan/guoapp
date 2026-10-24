@@ -267,30 +267,34 @@ class PlaybackSession extends ChangeNotifier {
         !ready ||
         _openedIndex != _index ||
         !_usable ||
+        !_engaged ||
         store.locked ||
         !hasNext) {
       _preloader.clear();
       return;
     }
     final state = player.state;
-    if (!state.playing || state.buffering || !_playIntent) {
-      _preloader.pause();
-      return;
-    }
-    if (_standbyOpen &&
-        DateTime.now().difference(_standbyAt) > const Duration(minutes: 8)) {
-      _dropStandby();
-    }
-    if (_standbyIndex >= 0) return;
     final duration = state.duration.inMilliseconds;
     final position = state.position.inMilliseconds;
-    if (duration <= 0 ||
-        position < 2000 ||
-        (_standby == null &&
-            position < duration ~/ 2 &&
-            duration - position > 45000) ||
-        state.buffer.inMilliseconds - position < 5000) {
-      return;
+    final ahead = state.buffer.inMilliseconds - position;
+    if (_standby != null) {
+      // 有备用播放器时尽早预开下一集，暂停或缓冲时也不中断。
+      if (_standbyOpen &&
+          DateTime.now().difference(_standbyAt) > const Duration(minutes: 8)) {
+        _dropStandby();
+      }
+      if (_standbyIndex >= 0 || duration <= 0 || ahead < 3000) return;
+    } else {
+      if (!state.playing || state.buffering || !_playIntent) {
+        _preloader.pause();
+        return;
+      }
+      if (duration <= 0 ||
+          position < 2000 ||
+          (position < duration ~/ 2 && duration - position > 45000) ||
+          ahead < 5000) {
+        return;
+      }
     }
     _preloader.prepare(
       detail.drama,

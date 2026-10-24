@@ -421,4 +421,37 @@ void main() {
     await pumpEventQueue();
     expect(player.rates.last, 1);
   });
+
+  test('the next episode opens early and keeps loading while paused', () async {
+    final repository = _PlaybackRepository();
+    final store = await openStore();
+    final standby = FakePlayer();
+    final (session, player) = await _open(repository, store, standby: standby);
+
+    session.togglePlayback();
+    player.state = player.state.copyWith(buffer: _seconds(4));
+    player.progress(_seconds(.5), duration: _seconds(100));
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    await pumpEventQueue();
+
+    expect(player.state.playing, isFalse);
+    expect(session.standbyIndex, 1);
+  });
+
+  test('a paused preopen does not open the next episode', () async {
+    final repository = _PlaybackRepository();
+    final store = await openStore();
+    final standby = FakePlayer();
+    final (session, player) = await _open(
+      repository,
+      store,
+      standby: standby,
+      autoplay: false,
+    );
+
+    await _settle(player);
+
+    expect(repository.preloaded, isEmpty);
+    expect(session.standbyIndex, -1);
+  });
 }

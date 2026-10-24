@@ -9,8 +9,7 @@ import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
 import '../player/playback_handle.dart';
-import '../player/player_page.dart';
-import '../player/portrait_player_page.dart';
+import '../player/playback_page.dart';
 import '../shell/app_shell.dart';
 import '../shell/pending_pages.dart';
 import '../widgets/cover_backdrop.dart';
@@ -237,9 +236,10 @@ class _DetailPageState extends State<DetailPage> {
     ).showSnackBar(SnackBar(content: Text(details.error!)));
   }
 
-  bool get _phonePlayback =>
-      defaultTargetPlatform != TargetPlatform.windows &&
-      AppScope.formFactorOf(context) == FormFactor.phone;
+  bool get _playable =>
+      !AppScope.of(context).television &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          AppScope.formFactorOf(context) == FormFactor.phone);
 
   double _startAt(int index, {required bool resume}) {
     final watch = _details!.watch;
@@ -272,7 +272,7 @@ class _DetailPageState extends State<DetailPage> {
     autoplay: autoplay,
   );
 
-  /// 手机上详情一加载完就暂停打开续播那一集：点播放即开，也提前知道视频横竖。
+  /// 详情一加载完就暂停打开续播那一集：点播放即开，也提前知道视频横竖。
   void _preopen() {
     final details = _details!;
     if (_handle != null ||
@@ -280,7 +280,7 @@ class _DetailPageState extends State<DetailPage> {
         !mounted ||
         !_ready ||
         !details.allowed ||
-        !_phonePlayback) {
+        !_playable) {
       return;
     }
     final index = details.resumeIndex;
@@ -292,8 +292,7 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   Future<void> _play(int index, {bool resume = false}) async {
-    if (defaultTargetPlatform != TargetPlatform.windows && !_phonePlayback ||
-        AppScope.of(context).television) {
+    if (!_playable) {
       await openPage<void>(
         context,
         (_) => const PendingPage(title: '播放', icon: Icons.play_circle_outline),
@@ -326,30 +325,16 @@ class _DetailPageState extends State<DetailPage> {
     }
     if (!mounted || !details.allowed) return;
     final position = _startAt(index, resume: resume);
-    if (_phonePlayback) {
-      final handle = _handle ?? _open(index, position: position);
-      _handle = null;
-      handle.session.start(index, position: position);
-      _watching = true;
-      await Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute<void>(
-          builder: (_) =>
-              PortraitPlayerPage(store: widget.store, handle: handle),
-        ),
-      );
-      _watching = false;
-      return;
-    }
+    final handle = _handle ?? _open(index, position: position);
+    _handle = null;
+    handle.session.start(index, position: position);
+    _watching = true;
     await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
-        builder: (_) => PlayerPage(
-          store: widget.store,
-          detail: _detail,
-          index: index,
-          position: position,
-        ),
+        builder: (_) => PlaybackPage(store: widget.store, handle: handle),
       ),
     );
+    _watching = false;
   }
 
   void _download() => openPage<void>(

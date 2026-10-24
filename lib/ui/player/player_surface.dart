@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../playback_preferences.dart';
 import '../../playback_session.dart';
 import 'danmaku_overlay.dart';
+import 'playback_handle.dart';
 
 String formatClock(Duration value) {
   final seconds = value.inSeconds;
@@ -20,8 +22,7 @@ enum _Popup { quality, speed, volume }
 class PlayerSurface extends StatefulWidget {
   const PlayerSurface({
     super.key,
-    required this.session,
-    required this.video,
+    required this.handle,
     required this.hint,
     required this.fullscreen,
     required this.wide,
@@ -29,8 +30,7 @@ class PlayerSurface extends StatefulWidget {
     required this.onWide,
     required this.onSurface,
   });
-  final PlaybackSession session;
-  final VideoController video;
+  final PlaybackHandle handle;
   final ValueListenable<String> hint;
   final bool fullscreen;
   final bool wide;
@@ -55,8 +55,9 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
   double? _seekValue;
   double? _seekTarget;
   Timer? _seekTimer;
+  Player? _bound;
 
-  PlaybackSession get _session => widget.session;
+  PlaybackSession get _session => widget.handle.session;
 
   void _endSeek() {
     _seekTimer?.cancel();
@@ -67,7 +68,20 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
   @override
   void initState() {
     super.initState();
-    final stream = _session.player.stream;
+    _session.addListener(_bind);
+    _bind();
+  }
+
+  /// 自动连播换到备用播放器后，改听新播放器的进度。
+  void _bind() {
+    final player = _session.player;
+    if (identical(player, _bound)) return;
+    _bound = player;
+    for (final subscription in _subscriptions) {
+      unawaited(subscription.cancel());
+    }
+    _subscriptions.clear();
+    final stream = player.stream;
     _subscriptions.add(
       stream.position.listen((position) {
         final target = _seekTarget;
@@ -95,6 +109,7 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
 
   @override
   void dispose() {
+    _session.removeListener(_bind);
     _hideTimer?.cancel();
     _pointerTimer?.cancel();
     _closeTimer?.cancel();
@@ -188,7 +203,8 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
           fit: StackFit.expand,
           children: [
             Video(
-              controller: widget.video,
+              key: ValueKey(_session.player),
+              controller: widget.handle.video(_session.player),
               controls: NoVideoControls,
               pauseUponEnteringBackgroundMode: false,
             ),
