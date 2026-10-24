@@ -252,9 +252,13 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
       showDragHandle: true,
       backgroundColor: dark.colorScheme.surfaceContainerLow,
       constraints: BoxConstraints.tightFor(height: height),
+      // 上拉栏的 Material 按页面外的主题给文字定色，浅色模式下会是深色字，这里改回深色主题的前景色。
       builder: (context) => Theme(
         data: dark,
-        child: Builder(builder: builder),
+        child: DefaultTextStyle.merge(
+          style: TextStyle(color: dark.colorScheme.onSurface),
+          child: Builder(builder: builder),
+        ),
       ),
     );
   }

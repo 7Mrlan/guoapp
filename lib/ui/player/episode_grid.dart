@@ -12,7 +12,8 @@ const _rowExtent = _cellHeight + _cellGap;
 const _listTop = 14.0;
 
 /// 播放页的选集：全部集数连续排列，打开或换集时滚到当前集。
-/// 多选时宽屏按住拖选，触屏轻点勾选、长按后拖选；拖到上下边缘自动滚动。
+/// 多选时按下即勾选、按住滑过连选，拖到上下边缘自动滚动。
+/// 触屏多选时列表不随手指滚动，也不让上拉栏跟着下拉关闭。
 class EpisodeGrid extends StatefulWidget {
   const EpisodeGrid({
     super.key,
@@ -97,11 +98,6 @@ class _EpisodeGridState extends State<EpisodeGrid> {
       ..clear()
       ..addAll(_dragBase);
     adds ? _selected.addAll(range) : _selected.removeAll(range);
-    widget.onSelectionChanged();
-  }
-
-  void _toggle(int index) {
-    if (!_selected.remove(index)) _selected.add(index);
     widget.onSelectionChanged();
   }
 
@@ -204,8 +200,10 @@ class _EpisodeGridState extends State<EpisodeGrid> {
         );
       }
       final selecting = widget.selecting;
+      final holdList = selecting && widget.touch;
       final list = ListView.builder(
         controller: _scroll,
+        physics: holdList ? const NeverScrollableScrollPhysics() : null,
         padding: const EdgeInsets.fromLTRB(16, _listTop, 16, 8),
         itemExtent: _rowExtent,
         itemCount: (_episodes.length / _columns).ceil(),
@@ -229,11 +227,9 @@ class _EpisodeGridState extends State<EpisodeGrid> {
                           selected: selecting
                               ? _selected.contains(index)
                               : null,
-                          onPressed: !selecting
-                              ? () => widget.onPick(index)
-                              : widget.touch
-                              ? () => _toggle(index)
-                              : null,
+                          onPressed: selecting
+                              ? null
+                              : () => widget.onPick(index),
                         )
                       : const SizedBox.shrink(),
                 ),
@@ -241,20 +237,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
           ),
         ),
       );
-      if (widget.touch) {
-        return GestureDetector(
-          onLongPressStart: selecting
-              ? (details) => _dragStart(details.localPosition)
-              : null,
-          onLongPressMoveUpdate: selecting
-              ? (details) => _dragMove(details.localPosition)
-              : null,
-          onLongPressEnd: selecting ? (_) => _dragEnd() : null,
-          onLongPressCancel: selecting ? _dragEnd : null,
-          child: list,
-        );
-      }
-      return Listener(
+      final selection = Listener(
         onPointerDown: selecting
             ? (event) => _dragStart(event.localPosition)
             : null,
@@ -264,6 +247,12 @@ class _EpisodeGridState extends State<EpisodeGrid> {
         onPointerUp: (_) => _dragEnd(),
         onPointerCancel: (_) => _dragEnd(),
         child: list,
+      );
+      if (!holdList) return selection;
+      return GestureDetector(
+        onVerticalDragUpdate: (_) {},
+        onHorizontalDragUpdate: (_) {},
+        child: selection,
       );
     },
   );
