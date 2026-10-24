@@ -443,7 +443,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
           key: const ValueKey('progress'),
           left: 16,
           right: 16,
-          bottom: bottom + _maskHeight,
+          bottom: bottom + 60,
           height: 32,
           child: _progress(context),
         ),
