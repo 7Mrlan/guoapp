@@ -15,6 +15,7 @@ const _listTop = 14.0;
 /// 播放页的选集：全部集数连续排列，打开或换集时滚到当前集。
 /// 多选时按住滑过连选，拖到上下边缘自动滚动。宽屏按下即勾选；
 /// 触屏轻点勾选，先横向滑动才开始连选，竖向滑动照常滚动列表。
+/// [header] 排在集数上方，和集数一起滚动。
 class EpisodeGrid extends StatefulWidget {
   const EpisodeGrid({
     super.key,
@@ -25,6 +26,7 @@ class EpisodeGrid extends StatefulWidget {
     required this.onSelectionChanged,
     required this.onPick,
     this.touch = false,
+    this.header,
   });
   final List<Episode> episodes;
   final int current;
@@ -33,6 +35,7 @@ class EpisodeGrid extends StatefulWidget {
   final VoidCallback onSelectionChanged;
   final ValueChanged<int> onPick;
   final bool touch;
+  final Widget? header;
 
   @override
   State<EpisodeGrid> createState() => _EpisodeGridState();
@@ -40,6 +43,7 @@ class EpisodeGrid extends StatefulWidget {
 
 class _EpisodeGridState extends State<EpisodeGrid> {
   final _scroll = ScrollController();
+  final _headerKey = GlobalKey();
   bool? _dragAdds;
   int _dragAnchor = 0;
   Set<int> _dragBase = const {};
@@ -65,6 +69,8 @@ class _EpisodeGridState extends State<EpisodeGrid> {
     super.dispose();
   }
 
+  double get _top => _listTop + (_headerKey.currentContext?.size?.height ?? 0);
+
   double get _cellWidth =>
       (_gridWidth - 32 - _cellGap * (_columns - 1)) / _columns;
 
@@ -72,7 +78,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
     if (_episodes.isEmpty || !_scroll.hasClients) return null;
     final pitch = _cellWidth + _cellGap;
     final x = point.dx - 16;
-    final y = point.dy + _scroll.offset - _listTop;
+    final y = point.dy + _scroll.offset - _top;
     if (exact &&
         (x < 0 ||
             y < 0 ||
@@ -170,7 +176,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
 
   void _reveal({required bool animate}) {
     if (!mounted || !_scroll.hasClients) return;
-    final top = _listTop + widget.current ~/ _columns * _rowExtent;
+    final top = _top + widget.current ~/ _columns * _rowExtent;
     final position = _scroll.position;
     final view = position.viewportDimension;
     if (top >= position.pixels && top + _cellHeight <= position.pixels + view) {
@@ -206,42 +212,55 @@ class _EpisodeGridState extends State<EpisodeGrid> {
         );
       }
       final selecting = widget.selecting;
-      final list = ListView.builder(
-        controller: _scroll,
-        padding: const EdgeInsets.fromLTRB(16, _listTop, 16, 8),
+      final rows = SliverFixedExtentList(
         itemExtent: _rowExtent,
-        itemCount: (_episodes.length / _columns).ceil(),
-        itemBuilder: (context, row) => Padding(
-          padding: const EdgeInsets.only(bottom: _cellGap),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: _cellGap,
-            children: [
-              for (
-                var index = row * _columns;
-                index < (row + 1) * _columns;
-                index++
-              )
-                Expanded(
-                  child: index < _episodes.length
-                      ? _EpisodeCell(
-                          episode: _episodes[index],
-                          current: index == widget.current,
-                          watched: index < widget.current,
-                          selected: selecting
-                              ? _selected.contains(index)
-                              : null,
-                          onPressed: !selecting
-                              ? () => widget.onPick(index)
-                              : widget.touch
-                              ? () => _toggle(index)
-                              : null,
-                        )
-                      : const SizedBox.shrink(),
-                ),
-            ],
+        delegate: SliverChildBuilderDelegate(
+          childCount: (_episodes.length / _columns).ceil(),
+          (context, row) => Padding(
+            padding: const EdgeInsets.only(bottom: _cellGap),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: _cellGap,
+              children: [
+                for (
+                  var index = row * _columns;
+                  index < (row + 1) * _columns;
+                  index++
+                )
+                  Expanded(
+                    child: index < _episodes.length
+                        ? _EpisodeCell(
+                            episode: _episodes[index],
+                            current: index == widget.current,
+                            watched: index < widget.current,
+                            selected: selecting
+                                ? _selected.contains(index)
+                                : null,
+                            onPressed: !selecting
+                                ? () => widget.onPick(index)
+                                : widget.touch
+                                ? () => _toggle(index)
+                                : null,
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+              ],
+            ),
           ),
         ),
+      );
+      final list = CustomScrollView(
+        controller: _scroll,
+        slivers: [
+          if (widget.header case final header?)
+            SliverToBoxAdapter(
+              child: KeyedSubtree(key: _headerKey, child: header),
+            ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, _listTop, 16, 8),
+            sliver: rows,
+          ),
+        ],
       );
       if (widget.touch) {
         return GestureDetector(

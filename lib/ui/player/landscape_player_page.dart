@@ -1137,6 +1137,7 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
             child: SizedBox(
               height: 48,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (final (index, label) in const ['简介', '选集'].indexed)
                     Expanded(child: _tabButton(context, index, label)),
@@ -1239,39 +1240,38 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     final status = drama.releaseLabel == '状态未知'
         ? ''
         : '${drama.releaseLabel} · ';
+    // 状态和下载这一行跟着集数一起滚动。
+    final header = SizedBox(
+      height: 48,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 4, 0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                _selecting
+                    ? '已选 ${_selected.length} 集'
+                    : '$status共 ${episodes.length} 集',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
+              ),
+            ),
+            if (_canDownload && !_selecting)
+              IconButton(
+                onPressed: () => _select(true),
+                icon: const Icon(Icons.download_rounded),
+                tooltip: '下载选集',
+              ),
+          ],
+        ),
+      ),
+    );
     return Column(
       children: [
-        SizedBox(
-          height: 48,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 4, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _selecting
-                        ? '已选 ${_selected.length} 集'
-                        : '$status共 ${episodes.length} 集',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                if (_canDownload && !_selecting)
-                  IconButton(
-                    onPressed: () => _select(true),
-                    icon: const Icon(Icons.download_rounded),
-                    tooltip: '下载选集',
-                  ),
-              ],
-            ),
-          ),
-        ),
         Expanded(
           child: EpisodeGrid(
+            header: header,
             episodes: episodes,
             current: session.index,
             selecting: _selecting,
