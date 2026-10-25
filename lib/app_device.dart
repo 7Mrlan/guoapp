@@ -53,7 +53,7 @@ class AppDevice {
   }
 
   /// 播放页手动切横竖屏。Android 先锁定，手机转到该方向后恢复随系统旋转；
-  /// 其他平台一直锁定，直到传 [PlayerOrientation.auto]。
+  /// 其他平台和 [PlayerOrientation.lockedLandscape] 一直锁定，直到传 [PlayerOrientation.auto]。
   static Future<void> setPlayerOrientation(
     PlayerOrientation orientation,
   ) async {
@@ -67,7 +67,8 @@ class AppDevice {
     }
     try {
       await SystemChrome.setPreferredOrientations(switch (orientation) {
-        PlayerOrientation.landscape => const [
+        PlayerOrientation.landscape ||
+        PlayerOrientation.lockedLandscape => const [
           DeviceOrientation.landscapeLeft,
           DeviceOrientation.landscapeRight,
         ],
@@ -89,4 +90,4 @@ class AppDevice {
   }
 }
 
-enum PlayerOrientation { landscape, portrait, auto }
+enum PlayerOrientation { landscape, lockedLandscape, portrait, auto }

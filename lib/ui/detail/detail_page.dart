@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -236,10 +235,7 @@ class _DetailPageState extends State<DetailPage> {
     ).showSnackBar(SnackBar(content: Text(details.error!)));
   }
 
-  bool get _playable =>
-      !AppScope.of(context).television &&
-      (defaultTargetPlatform == TargetPlatform.windows ||
-          AppScope.formFactorOf(context) == FormFactor.phone);
+  bool get _playable => !AppScope.of(context).television;
 
   double _startAt(int index, {required bool resume}) {
     final watch = _details!.watch;

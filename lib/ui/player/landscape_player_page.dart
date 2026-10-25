@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -23,16 +24,18 @@ import 'player_surface.dart';
 enum _Panel { episodes, settings, speed, quality }
 
 /// 手机播放横屏视频：竖着拿时视频在上、简介和选集两个 Tab 在下（竖持）；手机转横后全屏。
-/// 轻点画面显示播控，3 秒无操作隐藏；双击暂停 / 播放，全屏时双击左右四分之一快退 / 快进 10 秒，
+/// 轻点画面显示播控，3 秒无操作隐藏；双击暂停 / 播放，全屏和平板竖持时双击左右四分之一快退 / 快进 10 秒，
 /// 每再双击一次多 10 秒，停手后一次跳到位；长按 2 倍速。
 class LandscapePlayerPage extends StatefulWidget {
   const LandscapePlayerPage({
     super.key,
     required this.store,
     required this.handle,
+    this.onFullscreen,
   });
   final LocalStore store;
   final PlaybackHandle handle;
+  final VoidCallback? onFullscreen;
 
   @override
   State<LandscapePlayerPage> createState() => _LandscapePlayerPageState();
@@ -109,18 +112,24 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     _clockTimer?.cancel();
     _seekTimer?.cancel();
     if (_holding) _session.endBoost();
-    unawaited(AppDevice.setPlayerOrientation(PlayerOrientation.auto));
-    unawaited(
-      SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.edgeToEdge,
-      ).catchError((Object _) {}),
-    );
+    if (widget.onFullscreen == null) {
+      unawaited(AppDevice.setPlayerOrientation(PlayerOrientation.auto));
+      unawaited(
+        SystemChrome.setEnabledSystemUIMode(
+          SystemUiMode.edgeToEdge,
+        ).catchError((Object _) {}),
+      );
+    }
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) =>
-      _session.setForeground(state == AppLifecycleState.resumed);
+      _session.setForeground(
+        state == AppLifecycleState.resumed ||
+            defaultTargetPlatform == TargetPlatform.windows &&
+                state == AppLifecycleState.inactive,
+      );
 
   void _bind() {
     final player = _session.player;
@@ -203,7 +212,7 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
 
   void _tapUp(TapUpDetails details, double width, bool full) {
     final x = details.localPosition.dx;
-    final side = !full
+    final side = !full && widget.onFullscreen == null
         ? 0
         : x < width / 4
         ? -1
@@ -564,7 +573,7 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
                     _icon(
                       Icons.fullscreen_rounded,
                       '全屏',
-                      () => _rotate(false),
+                      widget.onFullscreen ?? () => _rotate(false),
                       size: 40,
                     ),
                   ],

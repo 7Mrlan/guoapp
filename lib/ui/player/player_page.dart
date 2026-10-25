@@ -19,9 +19,15 @@ const _panelWidth = 360.0;
 
 /// 宽屏播放页：左边视频、右边选集。窗口窄到手机宽度时换成竖屏播放页。
 class PlayerPage extends StatefulWidget {
-  const PlayerPage({super.key, required this.store, required this.handle});
+  const PlayerPage({
+    super.key,
+    required this.store,
+    required this.handle,
+    this.padFullscreen,
+  });
   final LocalStore store;
   final PlaybackHandle handle;
+  final ValueNotifier<bool>? padFullscreen;
 
   @override
   State<PlayerPage> createState() => _PlayerPageState();
@@ -33,14 +39,16 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   final _hint = ValueNotifier('');
   final _selected = <int>{};
   Timer? _hintTimer;
-  late bool _wide = widget.store.playerWide;
-  bool _fullscreen = false;
+  late bool _wide = !_touch && widget.store.playerWide;
+  bool _windowFullscreen = false;
   bool _seekHeld = false;
   bool _selecting = false;
 
   PlaybackSession get _playback => widget.handle.session;
   Drama get _drama => _playback.detail.drama;
   List<Episode> get _episodes => _playback.detail.episodes;
+  bool get _touch => widget.padFullscreen != null;
+  bool get _fullscreen => widget.padFullscreen?.value ?? _windowFullscreen;
 
   @override
   void initState() {
@@ -54,7 +62,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     _hintTimer?.cancel();
     _hint.dispose();
     _focus.dispose();
-    if (_fullscreen) unawaited(_setFullScreen(false));
+    if (_windowFullscreen) unawaited(_setFullScreen(false));
     super.dispose();
   }
 
@@ -77,8 +85,13 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       windowManager.setFullScreen(value).catchError((Object _) {});
 
   Future<void> _toggleFullscreen() async {
-    final next = !_fullscreen;
-    setState(() => _fullscreen = next);
+    if (widget.padFullscreen case final pad?) {
+      pad.value = !pad.value;
+      _focus.requestFocus();
+      return;
+    }
+    final next = !_windowFullscreen;
+    setState(() => _windowFullscreen = next);
     _focus.requestFocus();
     await _setFullScreen(next);
   }
@@ -221,6 +234,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
           child: PlayerSurface(
             handle: widget.handle,
             hint: _hint,
+            touch: _touch,
             fullscreen: _fullscreen,
             wide: _wide,
             onFullscreen: () => unawaited(_toggleFullscreen()),
@@ -244,7 +258,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
           child: Scaffold(
             backgroundColor: _filled ? Colors.black : theme.colorScheme.surface,
             body: _filled
-                ? surface
+                ? SafeArea(child: surface)
                 : SafeArea(
                     child: ListenableBuilder(
                       listenable: _playback,

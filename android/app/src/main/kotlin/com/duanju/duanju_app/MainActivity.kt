@@ -99,12 +99,13 @@ class MainActivity : FlutterActivity() {
     }
 
     /// 播放页手动切横竖屏：先锁定方向，等手机真的转到这个方向并停稳、且系统开着自动旋转时再放开，之后随手机旋转。
+    /// lockedLandscape 一直锁定横屏，直到传 auto。
     private fun setPlayerOrientation(mode: String) {
         orientationListener?.disable()
         orientationListener = null
         val landscape = mode == "landscape"
         requestedOrientation = when (mode) {
-            "landscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            "landscape", "lockedLandscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             "portrait" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
             else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }

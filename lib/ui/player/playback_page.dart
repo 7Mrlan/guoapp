@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
 
+import '../../app_device.dart';
 import '../../local_store.dart';
 import '../../playback_session.dart';
 import '../app_scope.dart';
@@ -20,6 +25,7 @@ class PlaybackPage extends StatefulWidget {
 }
 
 class _PlaybackPageState extends State<PlaybackPage> {
+  final _padFullscreen = ValueNotifier(false);
   late bool _wideVideo = _measure();
 
   PlaybackSession get _session => widget.handle.session;
@@ -30,11 +36,14 @@ class _PlaybackPageState extends State<PlaybackPage> {
   void initState() {
     super.initState();
     _session.addListener(_changed);
+    _padFullscreen.addListener(_padFullscreenChanged);
   }
 
   @override
   void dispose() {
     _session.removeListener(_changed);
+    if (_padFullscreen.value) _applyPadFullscreen(false);
+    _padFullscreen.dispose();
     widget.handle.dispose();
     super.dispose();
   }
@@ -44,19 +53,65 @@ class _PlaybackPageState extends State<PlaybackPage> {
     if (wide != _wideVideo) setState(() => _wideVideo = wide);
   }
 
-  // 平板和电视的播放版式还没做，先用竖屏页。手机按最短边判断，转成横屏也仍是手机。
+  void _padFullscreenChanged() {
+    _applyPadFullscreen(_padFullscreen.value);
+    setState(() {});
+  }
+
+  void _applyPadFullscreen(bool full) {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      unawaited(windowManager.setFullScreen(full).catchError((Object _) {}));
+      return;
+    }
+    unawaited(
+      AppDevice.setPlayerOrientation(
+        full ? PlayerOrientation.lockedLandscape : PlayerOrientation.auto,
+      ),
+    );
+    unawaited(
+      SystemChrome.setEnabledSystemUIMode(
+        full ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+      ).catchError((Object _) {}),
+    );
+  }
+
+  // 电视的播放版式还没做，先用竖屏页。按最短边区分手机和平板：手机转成横屏也仍是手机；
+  // 平板横持用宽屏版式、竖持用手机的页面，全屏只由按钮进出，全屏期间锁定横屏。
+  // Windows 界面模式为「平板」时也用平板版式，按窗口宽高分横持 / 竖持，全屏为窗口全屏。
   @override
   Widget build(BuildContext context) {
     if (defaultTargetPlatform == TargetPlatform.windows) {
-      return AppScope.formFactorOf(context) == FormFactor.phone
-          ? PortraitPlayerPage(store: widget.store, handle: widget.handle)
-          : PlayerPage(store: widget.store, handle: widget.handle);
+      if (AppScope.formFactorOf(context) == FormFactor.phone) {
+        return PortraitPlayerPage(store: widget.store, handle: widget.handle);
+      }
+      return AppScope.of(context).desktop
+          ? PlayerPage(store: widget.store, handle: widget.handle)
+          : _padPage(context);
     }
-    final phone =
-        !AppScope.of(context).television &&
-        MediaQuery.sizeOf(context).shortestSide < 600;
-    return phone && _wideVideo
+    final touch = !AppScope.of(context).television;
+    if (touch && MediaQuery.sizeOf(context).shortestSide >= 600) {
+      return _padPage(context);
+    }
+    return touch && _wideVideo
         ? LandscapePlayerPage(store: widget.store, handle: widget.handle)
+        : PortraitPlayerPage(store: widget.store, handle: widget.handle);
+  }
+
+  Widget _padPage(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    if (_padFullscreen.value || size.width > size.height) {
+      return PlayerPage(
+        store: widget.store,
+        handle: widget.handle,
+        padFullscreen: _padFullscreen,
+      );
+    }
+    return _wideVideo
+        ? LandscapePlayerPage(
+            store: widget.store,
+            handle: widget.handle,
+            onFullscreen: () => _padFullscreen.value = true,
+          )
         : PortraitPlayerPage(store: widget.store, handle: widget.handle);
   }
 }

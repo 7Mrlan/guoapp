@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
@@ -24,6 +25,7 @@ class PlayerSurface extends StatefulWidget {
     super.key,
     required this.handle,
     required this.hint,
+    this.touch = false,
     required this.fullscreen,
     required this.wide,
     required this.onFullscreen,
@@ -32,6 +34,7 @@ class PlayerSurface extends StatefulWidget {
   });
   final PlaybackHandle handle;
   final ValueListenable<String> hint;
+  final bool touch;
   final bool fullscreen;
   final bool wide;
   final VoidCallback onFullscreen;
@@ -48,6 +51,11 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
   Timer? _hideTimer;
   Timer? _pointerTimer;
   Timer? _closeTimer;
+  Timer? _tapTimer;
+  Timer? _streakTimer;
+  int _streak = 0;
+  int _streakTaps = 0;
+  bool _holding = false;
   bool _visible = true;
   bool _overBar = false;
   bool _pointer = false;
@@ -114,6 +122,9 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
     _pointerTimer?.cancel();
     _closeTimer?.cancel();
     _seekTimer?.cancel();
+    _tapTimer?.cancel();
+    _streakTimer?.cancel();
+    if (_holding) _session.endBoost();
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());
     }
@@ -126,7 +137,7 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
 
   void _scheduleHide() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(milliseconds: 500), () {
+    _hideTimer = Timer(Duration(milliseconds: widget.touch ? 3000 : 500), () {
       final state = _session.player.state;
       if (!mounted ||
           _overBar ||
@@ -173,6 +184,94 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
     _scheduleHide();
   }
 
+  void _toggleControls() {
+    final state = _session.player.state;
+    if (_visible && state.playing && _session.ready && !_session.stalled) {
+      _hideTimer?.cancel();
+      setState(() => _visible = false);
+    } else {
+      _show();
+    }
+  }
+
+  void _tapUp(TapUpDetails details, double width) {
+    widget.onSurface();
+    final x = details.localPosition.dx;
+    final side = x < width / 4
+        ? -1
+        : x > width * 3 / 4
+        ? 1
+        : 0;
+    if (_streak != 0) {
+      if (side == _streak.sign) return _streakTap(side);
+      setState(_commitStreak);
+    }
+    if (_tapTimer?.isActive ?? false) {
+      _tapTimer!.cancel();
+      if (side == 0) {
+        _session.togglePlayback();
+      } else {
+        _startStreak(side);
+      }
+      return;
+    }
+    _tapTimer = Timer(const Duration(milliseconds: 300), _toggleControls);
+  }
+
+  void _startStreak(int side) {
+    final duration = _session.player.state.duration;
+    if (!_session.ready || duration <= Duration.zero) return;
+    _streak = side;
+    _streakTaps = 0;
+    unawaited(HapticFeedback.selectionClick());
+    _armStreak();
+  }
+
+  void _streakTap(int side) {
+    _streakTaps++;
+    if (_streakTaps.isEven) {
+      _streak += side;
+      unawaited(HapticFeedback.selectionClick());
+    }
+    _armStreak();
+  }
+
+  void _armStreak() {
+    _streakTimer?.cancel();
+    _streakTimer = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) setState(_commitStreak);
+    });
+    setState(() {});
+  }
+
+  void _commitStreak() {
+    _streakTimer?.cancel();
+    final steps = _streak;
+    _streak = 0;
+    final state = _session.player.state;
+    if (steps == 0 || !_session.ready || state.duration <= Duration.zero) {
+      return;
+    }
+    final target = (state.position.inMilliseconds + steps * 10000).clamp(
+      0,
+      state.duration.inMilliseconds,
+    );
+    unawaited(_session.seekTo(Duration(milliseconds: target)));
+  }
+
+  void _pressStart() {
+    if (!_session.ready) return;
+    _session.holdBoost();
+    unawaited(HapticFeedback.selectionClick());
+    _holding = true;
+  }
+
+  void _pressEnd() {
+    if (!_holding) return;
+    _holding = false;
+    _session.endBoost();
+  }
+
   Future<void> _change(Future<void> Function() change) async {
     _close();
     widget.onSurface();
@@ -212,19 +311,31 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
               controller: _session.danmaku,
               aspectRatio: _session.aspectRatio,
             ),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                widget.onSurface();
-                _session.togglePlayback();
-              },
-              onDoubleTap: widget.onFullscreen,
-            ),
+            if (widget.touch)
+              LayoutBuilder(
+                builder: (context, constraints) => GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapUp: (details) => _tapUp(details, constraints.maxWidth),
+                  onLongPressStart: (_) => _pressStart(),
+                  onLongPressEnd: (_) => _pressEnd(),
+                  onLongPressCancel: _pressEnd,
+                ),
+              )
+            else
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  widget.onSurface();
+                  _session.togglePlayback();
+                },
+                onDoubleTap: widget.onFullscreen,
+              ),
             if (_session.ready && _session.stalled)
               const IgnorePointer(
                 child: Center(child: CircularProgressIndicator()),
               ),
             if (_session.ready && !state.playing) _pausedMark(),
+            if (_streak != 0) _streakBadge(),
             IgnorePointer(
               ignoring: !visible,
               child: ExcludeFocus(
@@ -234,7 +345,10 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
                   duration: state.playing
                       ? const Duration(milliseconds: 180)
                       : Duration.zero,
-                  child: _controls(context),
+                  child: Listener(
+                    onPointerDown: widget.touch ? (_) => _scheduleHide() : null,
+                    child: _controls(context),
+                  ),
                 ),
               ),
             ),
@@ -253,6 +367,8 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
                 },
               ),
             ),
+            if (popup != null && widget.touch)
+              GestureDetector(behavior: HitTestBehavior.opaque, onTap: _close),
             if (popup != null)
               Positioned(
                 left: 0,
@@ -300,6 +416,44 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
       ),
     ),
   );
+
+  Widget _streakBadge() {
+    final forward = _streak > 0;
+    return IgnorePointer(
+      child: Align(
+        alignment: Alignment(forward ? .75 : -.75, 0),
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: .5),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 6,
+            children: [
+              Icon(
+                forward
+                    ? Icons.fast_forward_rounded
+                    : Icons.fast_rewind_rounded,
+                size: 20,
+                color: Colors.white,
+              ),
+              Text(
+                '${forward ? '快进' : '快退'} ${_streak.abs() * 10} 秒',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _controls(BuildContext context) {
     final state = _session.player.state;
@@ -457,18 +611,19 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
             bold: true,
           ),
         ),
-        _popupTarget(
-          _Popup.volume,
-          _icon(
-            state.volume == 0
-                ? Icons.volume_off_rounded
-                : Icons.volume_up_rounded,
-            state.volume == 0 ? '取消静音' : '静音',
-            () => _session.toggleMute(),
+        if (!widget.touch)
+          _popupTarget(
+            _Popup.volume,
+            _icon(
+              state.volume == 0
+                  ? Icons.volume_off_rounded
+                  : Icons.volume_up_rounded,
+              state.volume == 0 ? '取消静音' : '静音',
+              () => _session.toggleMute(),
+            ),
           ),
-        ),
         _icon(Icons.picture_in_picture_alt_rounded, '画中画', null),
-        if (!widget.fullscreen)
+        if (!widget.touch && !widget.fullscreen)
           _icon(
             Icons.width_wide_rounded,
             widget.wide ? '退出宽屏' : '宽屏',
