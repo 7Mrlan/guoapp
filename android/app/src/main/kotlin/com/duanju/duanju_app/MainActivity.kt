@@ -34,6 +34,7 @@ import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
 
 private const val SURFACE_RESIZE_REDRAW_WAIT_MS = 100L
+private const val ORIENTATION_SETTLE_MS = 800L
 
 class MainActivity : FlutterActivity() {
     private var headroomReadAt = 0L
@@ -97,18 +98,20 @@ class MainActivity : FlutterActivity() {
         )
     }
 
-    /// 播放页手动切横竖屏：先锁定方向，等手机真的转到这个方向、且系统开着自动旋转时再放开，之后随手机旋转。
+    /// 播放页手动切横竖屏：先锁定方向，等手机真的转到这个方向并停稳、且系统开着自动旋转时再放开，之后随手机旋转。
     private fun setPlayerOrientation(mode: String) {
         orientationListener?.disable()
         orientationListener = null
         val landscape = mode == "landscape"
         requestedOrientation = when (mode) {
             "landscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-            "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            "portrait" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
             else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
         if (!landscape && mode != "portrait") return
         val listener = object : OrientationEventListener(this) {
+            private var reachedAt = 0L
+
             override fun onOrientationChanged(angle: Int) {
                 if (angle == ORIENTATION_UNKNOWN) return
                 val reached = if (landscape) angle in 60..120 || angle in 240..300
@@ -116,7 +119,13 @@ class MainActivity : FlutterActivity() {
                 val rotation = Settings.System.getInt(
                     contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0
                 )
-                if (!reached || rotation != 1) return
+                if (!reached || rotation != 1) {
+                    reachedAt = 0L
+                    return
+                }
+                val now = SystemClock.uptimeMillis()
+                if (reachedAt == 0L) reachedAt = now
+                if (now - reachedAt < ORIENTATION_SETTLE_MS) return
                 disable()
                 orientationListener = null
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
