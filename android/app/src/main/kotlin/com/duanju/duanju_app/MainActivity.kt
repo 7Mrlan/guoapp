@@ -1,12 +1,15 @@
 package com.duanju.duanju_app
 
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterSurfaceView
 import android.app.UiModeManager
 import android.app.ActivityManager
 import android.app.PictureInPictureParams
 import android.os.Build
 import android.os.Bundle
 import android.os.BatteryManager
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import android.content.ComponentName
@@ -22,12 +25,15 @@ import android.net.Uri
 import android.util.Rational
 import android.view.InputDevice
 import android.view.OrientationEventListener
+import android.view.SurfaceHolder
 import android.view.WindowManager
 import android.provider.Settings
 import androidx.annotation.ChecksSdkIntAtLeast
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
+
+private const val SURFACE_RESIZE_REDRAW_WAIT_MS = 100L
 
 class MainActivity : FlutterActivity() {
     private var headroomReadAt = 0L
@@ -166,13 +172,41 @@ class MainActivity : FlutterActivity() {
         } else isTelevisionDevice()
         super.onCreate(savedInstanceState)
         if (televisionMode) requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        // 系统默认的旋转动画会把旧画面拉伸着转过去，直到 Flutter 按新尺寸画出来；改成淡入淡出。
-        window.attributes = window.attributes.apply {
-            rotationAnimation = WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE
-        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
             window.isStatusBarContrastEnforced = false
+        }
+    }
+
+    override fun onFlutterSurfaceViewCreated(flutterSurfaceView: FlutterSurfaceView) {
+        super.onFlutterSurfaceViewCreated(flutterSurfaceView)
+        flutterSurfaceView.holder.addCallback(SurfaceResizeRedrawWait())
+    }
+
+    private class SurfaceResizeRedrawWait : SurfaceHolder.Callback2 {
+        private val handler = Handler(Looper.getMainLooper())
+        private var size: Pair<Int, Int>? = null
+        private var resized = false
+
+        override fun surfaceCreated(holder: SurfaceHolder) {}
+
+        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+            val next = width to height
+            resized = size != null && size != next
+            size = next
+        }
+
+        override fun surfaceDestroyed(holder: SurfaceHolder) {
+            size = null
+            resized = false
+        }
+
+        override fun surfaceRedrawNeeded(holder: SurfaceHolder) {}
+
+        override fun surfaceRedrawNeededAsync(holder: SurfaceHolder, drawingFinished: Runnable) {
+            if (!resized) return drawingFinished.run()
+            resized = false
+            handler.postDelayed(drawingFinished, SURFACE_RESIZE_REDRAW_WAIT_MS)
         }
     }
 
