@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../app_build.dart';
+import '../../app_device.dart';
 import '../../download_preferences.dart';
 import '../../local_store.dart';
+import '../../playback_preferences.dart';
 import '../../resource_settings.dart';
 import '../../resource_settings_editor.dart';
 import '../app_scope.dart';
@@ -20,7 +22,7 @@ import 'storage_view.dart';
 
 enum SettingsGroup {
   appearance('外观', Icons.palette_outlined),
-  playback('播放', Icons.play_arrow_rounded, placeholder: '播放'),
+  playback('播放', Icons.play_arrow_rounded),
   download('下载', Icons.download_rounded),
   sources('站源', Icons.dns_outlined),
   proxy('代理', Icons.language_rounded),
@@ -28,10 +30,9 @@ enum SettingsGroup {
   about('关于', Icons.info_outline_rounded),
   diagnostics('诊断', Icons.receipt_long_outlined);
 
-  const SettingsGroup(this.label, this.icon, {this.placeholder});
+  const SettingsGroup(this.label, this.icon);
   final String label;
   final IconData icon;
-  final String? placeholder;
 }
 
 typedef OpenSubpage = void Function(String title, WidgetBuilder body);
@@ -41,6 +42,11 @@ const _noDownload = '当前用户没有下载权限';
 const _proxyModes = {'auto': '自动', 'direct': '直连', 'manual': '手动代理'};
 const _counts = {1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6'};
 const _intervals = [0, 100, 250, 500, 1000, 2000, 3000, 5000];
+const _decoders = {
+  TelevisionDecoder.optimized: '默认',
+  TelevisionDecoder.hardware: '硬解（兼容）',
+  TelevisionDecoder.software: '软解（兼容）',
+};
 
 class SettingsSection extends StatelessWidget {
   const SettingsSection({
@@ -67,6 +73,7 @@ class SettingsSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 12,
             children: switch (group) {
+              SettingsGroup.playback => _playback(context),
               SettingsGroup.download => _download(context),
               SettingsGroup.sources => _sources(context),
               SettingsGroup.proxy => _proxy(context),
@@ -87,6 +94,54 @@ class SettingsSection extends StatelessWidget {
     ),
     null => null,
   };
+
+  List<Widget> _playback(BuildContext context) {
+    final preferences = store.playbackPreferences;
+    void savePreferences(PlaybackPreferences next) =>
+        saveSetting(context, () => store.setPlaybackPreferences(next));
+    return [
+      SettingsCard(
+        children: [
+          ValueTile<double>(
+            title: '默认倍速',
+            subtitle: '播放时调整倍速也会更新这里',
+            options: {for (final speed in playbackSpeeds) speed: '${speed}x'},
+            value: preferences.speed,
+            onChanged: (speed) =>
+                savePreferences(preferences.copyWith(speed: speed)),
+          ),
+          ValueTile<int>(
+            title: '默认清晰度',
+            subtitle: '指定清晰度不可用时，使用源站可用画质',
+            options: {
+              for (final quality in {
+                ...DownloadPreferences.qualities,
+                preferences.quality,
+              }.toList()..sort((a, b) => b - a))
+                quality: quality == 0 ? '自动（优先高清）' : '${quality}P',
+            },
+            value: preferences.quality,
+            onChanged: (quality) =>
+                savePreferences(preferences.copyWith(quality: quality)),
+          ),
+        ],
+      ),
+      SettingsCard(
+        children: [
+          ValueTile<TelevisionDecoder>(
+            title: '解码方式',
+            subtitle: '有声音没画面或卡顿时可换兼容方式，下次打开视频时生效',
+            options: _decoders,
+            value: preferences.televisionDecoder,
+            onChanged: (decoder) => savePreferences(
+              preferences.copyWith(televisionDecoder: decoder),
+            ),
+          ),
+          if (Platform.isAndroid) const _RenderingTile(),
+        ],
+      ),
+    ];
+  }
 
   List<Widget> _download(BuildContext context) {
     final canDownload = store.canDownload;
@@ -337,6 +392,66 @@ class _BackupCardState extends State<_BackupCard> {
       ],
     );
   }
+}
+
+class _RenderingTile extends StatefulWidget {
+  const _RenderingTile();
+
+  @override
+  State<_RenderingTile> createState() => _RenderingTileState();
+}
+
+class _RenderingTileState extends State<_RenderingTile> {
+  bool? _compatible;
+
+  @override
+  void initState() {
+    super.initState();
+    AppDevice.compatibleRendering().then((value) {
+      if (mounted) setState(() => _compatible = value);
+    });
+  }
+
+  Future<void> _switch(bool enabled) async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(enabled ? '开启兼容渲染模式？' : '关闭兼容渲染模式？'),
+        content: const Text('需要重启应用才能生效，正在进行的下载会中断。'),
+        actions: [
+          FocusRing(
+            radius: 20,
+            child: TextButton(
+              autofocus: true,
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('取消'),
+            ),
+          ),
+          FocusRing(
+            radius: 20,
+            child: FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('立即重启'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    if (!await AppDevice.setCompatibleRendering(enabled) && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('兼容渲染模式未能保存，请重试')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SwitchTile(
+    title: '兼容渲染模式',
+    subtitle: '改用 Skia 渲染（关闭 Impeller），用于换了解码方式仍没有画面的设备',
+    value: _compatible ?? false,
+    onChanged: _compatible == null ? null : _switch,
+  );
 }
 
 class _Note extends StatelessWidget {

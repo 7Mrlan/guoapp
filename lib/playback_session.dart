@@ -427,10 +427,16 @@ class PlaybackSession extends ChangeNotifier {
   Future<void> _configure(Player target, PlaybackPlan plan) async {
     final platform = target.platform;
     if (platform is! NativePlayer) return;
-    if (Platform.isWindows) {
-      await platform.setProperty('hwdec', 'd3d11va-copy');
-    } else if (Platform.isAndroid) {
-      await platform.setProperty('hwdec', 'auto-safe');
+    final hwdec = switch (store.playbackPreferences.televisionDecoder) {
+      TelevisionDecoder.software => 'no',
+      TelevisionDecoder.hardware when Platform.isAndroid => 'mediacodec-copy',
+      TelevisionDecoder.hardware when Platform.isIOS => 'videotoolbox-copy',
+      _ when Platform.isWindows => 'd3d11va-copy',
+      _ when Platform.isAndroid => 'auto-safe',
+      _ => null,
+    };
+    if (hwdec != null) await platform.setProperty('hwdec', hwdec);
+    if (Platform.isAndroid) {
       await platform.setProperty('hwdec-codecs', 'all');
       await platform.setProperty('vd-lavc-skiploopfilter', 'nonkey');
       await platform.setProperty('vd-lavc-threads', '4');

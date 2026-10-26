@@ -6,12 +6,10 @@ import '../../local_store.dart';
 import '../../resource_settings_editor.dart';
 import '../app_scope.dart';
 import '../shell/app_shell.dart';
-import '../shell/pending_pages.dart';
 import '../users/users_view.dart';
 import '../widgets/bar_button.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
-import '../widgets/status_view.dart';
 import 'appearance_settings.dart';
 import 'settings_rows.dart';
 import 'settings_sections.dart';
@@ -221,15 +219,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _openGroup(SettingsGroup group) => openPage<void>(
     context,
-    (_) => group.placeholder != null
-        ? PendingPage(title: group.placeholder!, icon: group.icon)
-        : Scaffold(
-            appBar: AppBar(title: Text(group.label)),
-            body: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              children: [_section(group)],
-            ),
-          ),
+    (_) => Scaffold(
+      appBar: AppBar(title: Text(group.label)),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        children: [_section(group)],
+      ),
+    ),
   );
 
   Widget _split(BuildContext context) {
@@ -350,19 +346,16 @@ class _SettingsPageState extends State<SettingsPage> {
     final subpage = _subpage;
     final top = television ? 27.0 : 20.0;
     final right = television ? televisionInset : 24.0;
-    final placeholder = _group.placeholder;
-    final content = placeholder != null
-        ? StatusView(title: '「$placeholder」正在重建', icon: _group.icon)
-        : SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(24, 8, right, television ? 27 : 32),
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 760),
-                child: _section(_group),
-              ),
-            ),
-          );
+    final content = SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(24, 8, right, television ? 27 : 32),
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: _section(_group),
+        ),
+      ),
+    );
     return Stack(
       fit: StackFit.expand,
       children: [
