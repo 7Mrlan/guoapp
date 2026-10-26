@@ -154,7 +154,6 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
         if (target != null && (position.inMilliseconds - target).abs() < 1000) {
           _endSeek();
         }
-        _refresh();
       }),
     );
     _subscriptions.add(
@@ -163,7 +162,7 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
         _refresh();
       }),
     );
-    for (final changes in [stream.duration, stream.buffer, stream.buffering]) {
+    for (final changes in [stream.duration, stream.buffering]) {
       _subscriptions.add(changes.listen((_) => _refresh()));
     }
     _refresh();
@@ -754,21 +753,24 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     );
   }
 
-  Widget _clock(double fontSize) {
-    final state = _session.player.state;
-    final position = _seekValue != null
-        ? Duration(milliseconds: _seekValue!.round())
-        : state.position;
-    return Text(
-      '${formatClock(position)} / ${formatClock(state.duration)}',
-      maxLines: 1,
-      style: TextStyle(
-        fontSize: fontSize,
-        color: Colors.white.withValues(alpha: .86),
-        fontFeatures: const [FontFeature.tabularFigures()],
-      ),
-    );
-  }
+  Widget _clock(double fontSize) => PlaybackProgressBuilder(
+    player: _session.player,
+    builder: (context) {
+      final state = _session.player.state;
+      final position = _seekValue != null
+          ? Duration(milliseconds: _seekValue!.round())
+          : state.position;
+      return Text(
+        '${formatClock(position)} / ${formatClock(state.duration)}',
+        maxLines: 1,
+        style: TextStyle(
+          fontSize: fontSize,
+          color: Colors.white.withValues(alpha: .86),
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      );
+    },
+  );
 
   Widget _danmakuButton(BuildContext context) {
     final enabled = _session.danmakuEnabled;
@@ -825,7 +827,13 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     ),
   );
 
-  Widget _progress(BuildContext context, {required double thumb}) {
+  Widget _progress(BuildContext context, {required double thumb}) =>
+      PlaybackProgressBuilder(
+        player: _session.player,
+        builder: (context) => _progressBar(context, thumb: thumb),
+      );
+
+  Widget _progressBar(BuildContext context, {required double thumb}) {
     final session = _session;
     final state = session.player.state;
     final duration = state.duration;
@@ -890,16 +898,19 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     );
   }
 
-  Widget _thinProgress(BuildContext context) {
-    final state = _session.player.state;
-    final duration = state.duration.inMilliseconds;
-    return LinearProgressIndicator(
-      value: duration > 0 ? state.position.inMilliseconds / duration : 0,
-      minHeight: 2,
-      color: Theme.of(context).colorScheme.primary,
-      backgroundColor: Colors.white.withValues(alpha: .2),
-    );
-  }
+  Widget _thinProgress(BuildContext context) => PlaybackProgressBuilder(
+    player: _session.player,
+    builder: (context) {
+      final state = _session.player.state;
+      final duration = state.duration.inMilliseconds;
+      return LinearProgressIndicator(
+        value: duration > 0 ? state.position.inMilliseconds / duration : 0,
+        minHeight: 2,
+        color: Theme.of(context).colorScheme.primary,
+        backgroundColor: Colors.white.withValues(alpha: .2),
+      );
+    },
+  );
 
   Widget _streakBadge(bool full) {
     final forward = _streak > 0;

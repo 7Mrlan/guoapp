@@ -100,15 +100,9 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
         if (target != null && (position.inMilliseconds - target).abs() < 1000) {
           _endSeek();
         }
-        _refresh();
       }),
     );
-    for (final changes in [
-      stream.duration,
-      stream.buffer,
-      stream.buffering,
-      stream.playing,
-    ]) {
+    for (final changes in [stream.duration, stream.buffering, stream.playing]) {
       _subscriptions.add(changes.listen((_) => _refresh()));
     }
   }
@@ -600,7 +594,10 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
     ),
   );
 
-  Widget _progress(BuildContext context) {
+  Widget _progress(BuildContext context) =>
+      PlaybackProgressBuilder(player: _session.player, builder: _progressBar);
+
+  Widget _progressBar(BuildContext context) {
     final session = _session;
     final state = session.player.state;
     final duration = state.duration;

@@ -43,6 +43,8 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
   int? _profileEpoch;
   var _television = false;
   var _phone = false;
+  (Color, bool)? _themeKey;
+  late (ThemeData, ThemeData) _themes;
 
   @override
   void initState() {
@@ -181,6 +183,13 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
         : null;
     final seed =
         systemColor ?? Color((store?.themeColor ?? ThemeColor.orange).seed);
+    if ((seed, television) != _themeKey) {
+      _themeKey = (seed, television);
+      _themes = (
+        AppTheme.build(seed, Brightness.light, television: television),
+        AppTheme.build(seed, Brightness.dark, television: television),
+      );
+    }
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => FocusManager.instance.highlightStrategy = television
           ? FocusHighlightStrategy.alwaysTraditional
@@ -194,8 +203,8 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
       locale: const Locale('zh', 'CN'),
       supportedLocales: const [Locale('zh', 'CN')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      theme: AppTheme.build(seed, Brightness.light, television: television),
-      darkTheme: AppTheme.build(seed, Brightness.dark, television: television),
+      theme: _themes.$1,
+      darkTheme: _themes.$2,
       themeMode: AppTheme.mode(store?.themeMode ?? 'system'),
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
         value: AppTheme.systemBars(Theme.of(context).brightness),

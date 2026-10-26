@@ -877,6 +877,64 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
   );
 }
 
+class PlaybackProgressBuilder extends StatefulWidget {
+  const PlaybackProgressBuilder({
+    super.key,
+    required this.player,
+    required this.builder,
+  });
+  final Player player;
+  final WidgetBuilder builder;
+
+  @override
+  State<PlaybackProgressBuilder> createState() =>
+      _PlaybackProgressBuilderState();
+}
+
+class _PlaybackProgressBuilderState extends State<PlaybackProgressBuilder> {
+  final List<StreamSubscription<Duration>> _subscriptions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _listen();
+  }
+
+  @override
+  void didUpdateWidget(PlaybackProgressBuilder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.player, widget.player)) _listen();
+  }
+
+  @override
+  void dispose() {
+    _cancel();
+    super.dispose();
+  }
+
+  void _listen() {
+    _cancel();
+    final stream = widget.player.stream;
+    for (final changes in [stream.position, stream.buffer]) {
+      _subscriptions.add(
+        changes.listen((_) {
+          if (mounted) setState(() {});
+        }),
+      );
+    }
+  }
+
+  void _cancel() {
+    for (final subscription in _subscriptions) {
+      unawaited(subscription.cancel());
+    }
+    _subscriptions.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context);
+}
+
 class PlaybackLoading extends StatelessWidget {
   const PlaybackLoading({super.key, required this.session});
   final PlaybackSession session;
