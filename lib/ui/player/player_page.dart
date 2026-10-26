@@ -11,6 +11,7 @@ import '../../playback_session.dart';
 import '../app_scope.dart';
 import '../theme/app_theme.dart';
 import '../widgets/focus_ring.dart';
+import '../widgets/follow_button.dart';
 import 'episode_grid.dart';
 import 'playback_handle.dart';
 import 'player_surface.dart';
@@ -340,7 +341,13 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                 icon: const Icon(Icons.download_rounded, size: 18),
                 label: const Text('下载'),
               ),
-            ] else
+            ] else ...[
+              FollowPill(
+                store: widget.store,
+                drama: _drama,
+                radius: 10,
+                onToggled: _focus.requestFocus,
+              ),
               Semantics(
                 label: '下载选集',
                 button: true,
@@ -351,6 +358,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                   style: IconButton.styleFrom(fixedSize: const Size.square(44)),
                 ),
               ),
+            ],
           ],
         ),
       ),

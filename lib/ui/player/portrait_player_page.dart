@@ -12,6 +12,7 @@ import '../../models.dart';
 import '../../playback_session.dart';
 import '../app_scope.dart';
 import '../theme/app_theme.dart';
+import '../widgets/follow_button.dart';
 import 'danmaku_overlay.dart';
 import 'episode_grid.dart';
 import 'playback_sheets.dart';
@@ -563,6 +564,12 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
               ),
             ],
           ),
+        ),
+        FollowIcon(
+          store: widget.store,
+          drama: session.detail.drama,
+          color: Colors.white,
+          activeColor: Theme.of(context).colorScheme.primaryFixedDim,
         ),
       ],
     );

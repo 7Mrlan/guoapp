@@ -84,9 +84,7 @@ class _HistoryPageState extends State<HistoryPage> {
       builder: (context) => AlertDialog(
         title: Text(clear ? '清空观看记录？' : '删除 ${ids.length} 条观看记录？'),
         content: Text(
-          clear
-              ? '将删除当前列出的 ${ids.length} 条观看记录，追剧状态和手动已看标记会保留。'
-              : '追剧状态和手动已看标记会保留。',
+          clear ? '将删除当前列出的 ${ids.length} 条观看记录，追剧不受影响。' : '追剧不受影响。',
         ),
         actions: [
           FocusRing(

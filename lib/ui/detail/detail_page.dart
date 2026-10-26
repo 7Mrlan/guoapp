@@ -14,6 +14,7 @@ import '../shell/pending_pages.dart';
 import '../widgets/cover_backdrop.dart';
 import '../widgets/cover_image.dart';
 import '../widgets/focus_ring.dart';
+import '../widgets/follow_button.dart';
 import '../widgets/status_view.dart';
 
 class _Metrics {
@@ -42,6 +43,7 @@ class _Metrics {
     this.columns = 0,
     this.cellWidth = 0,
     this.vipBadge = false,
+    this.follow = 40,
   });
   final Size cover;
   final double coverRadius;
@@ -67,6 +69,7 @@ class _Metrics {
   final int columns;
   final double cellWidth;
   final bool vipBadge;
+  final double follow;
 
   int columnsFor(double width) => columns > 0
       ? columns
@@ -146,6 +149,7 @@ const _pad = _Metrics(
   cellText: 17,
   cellGap: 12,
   cellWidth: 76,
+  follow: 44,
 );
 
 const _television = _Metrics(
@@ -448,7 +452,7 @@ class _DetailPageState extends State<DetailPage> {
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.only(top: 6),
-                            child: _headline(details, m),
+                            child: _followingHeadline(details, m, 6),
                           ),
                         ),
                       ],
@@ -559,7 +563,7 @@ class _DetailPageState extends State<DetailPage> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: _headline(details, m),
+                child: _followingHeadline(details, m, 4),
               ),
             ),
           ],
@@ -1054,6 +1058,28 @@ class _DetailPageState extends State<DetailPage> {
       ],
     );
   }
+
+  Widget _followingHeadline(DramaDetails details, _Metrics m, double top) =>
+      ConstrainedBox(
+        constraints: BoxConstraints(minHeight: m.cover.height - top),
+        child: IntrinsicHeight(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _headline(details, m),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: FollowPill(
+                  store: widget.store,
+                  drama: details.drama,
+                  height: m.follow,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 
   Widget? _stats(Drama drama, _Metrics m) {
     final stats = [

@@ -186,11 +186,13 @@ class ProgressPoster extends StatelessWidget {
     this.focusNode,
     this.width = 100,
     this.selected,
+    this.badge,
   });
   final Drama drama;
   final double progress;
   final String caption;
   final String? tag;
+  final String? badge;
   final VoidCallback onTap;
   final VoidCallback? onMore;
   final FocusNode? focusNode;
@@ -235,6 +237,30 @@ class ProgressPoster extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ),
+            if (badge case final badge? when selected == null)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.primary,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    badge,
+                    style: TextStyle(
+                      color: colors.onPrimary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
                       height: 1.3,
                     ),
                   ),
@@ -309,7 +335,8 @@ class ProgressPoster extends StatelessWidget {
             ],
           ],
         ),
-        label: '${drama.title}，${tag == null ? '' : '$tag，'}$caption',
+        label:
+            '${drama.title}，${tag == null ? '' : '$tag，'}${badge == null ? '' : '$badge，'}$caption',
         checked: selected,
         onTap: onTap,
         onMore: onMore,

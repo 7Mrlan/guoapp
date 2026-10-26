@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../download_overview.dart';
+import '../../follow_updater.dart';
 import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
 import '../explore/explore_page.dart';
 import '../explore/source_actions.dart';
+import '../follow/follow_page.dart';
 import '../mine/mine_page.dart';
 import '../widgets/bar_button.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/source_bar.dart';
-import 'pending_pages.dart';
 
 enum AppTab {
   explore('发现', Icons.explore_outlined, Icons.explore),
@@ -43,6 +44,7 @@ class _AppShellState extends State<AppShell> {
     for (final _ in AppTab.values) GlobalKey<NavigatorState>(),
   ];
   final _tabFocus = [for (final _ in AppTab.values) FocusNode()];
+  final _followEntry = FocusNode();
   final _mineEntry = FocusNode();
   final _header = FocusNode();
   final _televisionTabs = GlobalKey();
@@ -51,6 +53,7 @@ class _AppShellState extends State<AppShell> {
   var _headerFocused = false;
   FocusNode? _lastFocus;
   DownloadOverview? _downloads;
+  FollowUpdater? _followUpdater;
 
   NavigatorState? get _navigator => _navigators[_tab.index].currentState;
 
@@ -67,6 +70,10 @@ class _AppShellState extends State<AppShell> {
       AppScope.of(context).repository,
       widget.store,
     );
+    _followUpdater ??= FollowUpdater(
+      AppScope.of(context).repository,
+      widget.store,
+    )..start();
   }
 
   @override
@@ -75,9 +82,11 @@ class _AppShellState extends State<AppShell> {
     for (final node in _tabFocus) {
       node.dispose();
     }
+    _followEntry.dispose();
     _mineEntry.dispose();
     _header.dispose();
     _downloads?.dispose();
+    _followUpdater?.dispose();
     super.dispose();
   }
 
@@ -95,12 +104,10 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
-  void _back() {
+  Future<void> _back() async {
     final navigator = _navigator;
-    if (navigator != null && navigator.canPop()) {
-      navigator.maybePop();
-      return;
-    }
+    if (navigator != null && await navigator.maybePop()) return;
+    if (!mounted) return;
     if (_tab == AppTab.explore) _explore.currentState?.refresh();
     _select(AppTab.explore);
     if (AppScope.of(context).television) _tabFocus.first.requestFocus();
@@ -108,13 +115,17 @@ class _AppShellState extends State<AppShell> {
 
   Widget _root(AppTab tab) => switch (tab) {
     AppTab.explore => ExplorePage(key: _explore, store: widget.store),
+    AppTab.follow => FollowPage(
+      store: widget.store,
+      entryFocus: _followEntry,
+      onExitUp: _tabFocus[AppTab.follow.index].requestFocus,
+    ),
     AppTab.mine => MinePage(
       store: widget.store,
       downloads: _downloads!,
       entryFocus: _mineEntry,
       onExitUp: _tabFocus[AppTab.mine.index].requestFocus,
     ),
-    _ => PendingTabPage(label: tab.label, icon: tab.icon),
   };
 
   @override
@@ -188,13 +199,17 @@ class _AppShellState extends State<AppShell> {
                       onFocusChange: (focused) =>
                           setState(() => _headerFocused = focused),
                       onKeyEvent: (_, event) {
+                        final entry = switch (_tab) {
+                          AppTab.follow => _followEntry,
+                          AppTab.mine => _mineEntry,
+                          AppTab.explore => null,
+                        };
                         if (event is KeyUpEvent ||
                             event.logicalKey != LogicalKeyboardKey.arrowDown ||
-                            _tab != AppTab.mine ||
-                            _mineEntry.context == null) {
+                            entry?.context == null) {
                           return KeyEventResult.ignored;
                         }
-                        revealFocus(_mineEntry);
+                        revealFocus(entry!);
                         return KeyEventResult.handled;
                       },
                       child: _televisionHeader(),

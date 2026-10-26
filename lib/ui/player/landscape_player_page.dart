@@ -16,6 +16,7 @@ import '../app_scope.dart';
 import '../theme/app_theme.dart';
 import 'danmaku_overlay.dart';
 import '../widgets/status_view.dart';
+import '../widgets/follow_button.dart';
 import 'episode_grid.dart';
 import 'playback_handle.dart';
 import 'playback_sheets.dart';
@@ -634,6 +635,15 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
                   ],
                 ),
               ),
+              FollowIcon(
+                store: widget.store,
+                drama: session.detail.drama,
+                color: Colors.white,
+                activeColor: Theme.of(context).colorScheme.primaryFixedDim,
+                size: 22,
+                extent: 44,
+              ),
+              const SizedBox(width: 8),
               if (_battery case final battery?) ...[
                 _batteryMark(battery),
                 const SizedBox(width: 12),
@@ -1212,13 +1222,35 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     ];
     final description = drama.description.trim();
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
-        Text(
-          drama.title,
-          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  drama.title,
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            Transform.translate(
+              offset: const Offset(8, 0),
+              child: FollowIcon(
+                store: widget.store,
+                drama: drama,
+                color: colors.onSurfaceVariant,
+                activeColor: colors.primary,
+                extent: 44,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
         Text(
           meta.join(' · '),
           style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),

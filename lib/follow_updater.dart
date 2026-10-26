@@ -51,11 +51,7 @@ class FollowUpdater {
     final now = _clock();
     final never = DateTime.fromMillisecondsSinceEpoch(0);
     final items = store.favorites.where((drama) {
-      final state = store.following(drama.id);
-      if (state == null ||
-          state.manuallyWatched ||
-          state.status == FollowStatus.planned ||
-          const {'finished', 'completed'}.contains(drama.releaseStatus)) {
+      if (const {'finished', 'completed'}.contains(drama.releaseStatus)) {
         return false;
       }
       final check = checks[drama.id];

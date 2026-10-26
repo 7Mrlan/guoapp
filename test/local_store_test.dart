@@ -79,9 +79,6 @@ void main() {
         'downloadPreferences',
         'catalogView',
         'recentSearches',
-        'lanRecords',
-        'lanSettings',
-        'lanReceipts',
       });
     });
 
@@ -247,7 +244,6 @@ void main() {
       final old = await store.exportBackup();
       final backup = jsonDecode(old) as Map<String, dynamic>;
       ((backup['libraries'] as Map)['default'] as Map)
-        ..remove('followSync')
         ..['favorites'] = [second.toJson()]
         ..['followStates'] = {};
       final content = jsonEncode(backup);
@@ -303,7 +299,6 @@ void main() {
       }
       final library = (backup['libraries'] as Map)['default'] as Map;
       for (final key in [
-        'followSync',
         'playback',
         'downloadPreferences',
         'catalogView',
@@ -324,6 +319,22 @@ void main() {
         store.playbackPreferences.toJson(),
         const PlaybackPreferences().toJson(),
       );
+    });
+
+    test('device link records from older versions are ignored', () async {
+      final store = await openStore();
+      await store.toggleFavorite(first);
+      final backup = jsonDecode(await store.exportBackup()) as Map;
+      final library = (backup['libraries'] as Map)['default'] as Map;
+      expect(library, isNot(contains('followSync')));
+      library['followSync'] = [
+        {'id': 'broken'},
+      ];
+
+      await store.toggleFavorite(first);
+      await store.importBackup(jsonEncode(backup));
+      expect(store.favorites.single.id, first.id);
+      expect(_snapshotValues(store).keys, isNot(contains('lanRecords')));
     });
 
     for (final (name, change) in <(String, void Function(Map))>[
@@ -353,6 +364,77 @@ void main() {
         expect(await store.exportBackup(), old);
       });
     }
+  });
+
+  group('follows', () {
+    test('three-state records from older versions still load', () async {
+      final store = await openStore({
+        LocalSnapshot.storageKey: _snapshot({
+          'favorites': jsonEncode([first.toJson(), second.toJson()]),
+          'followStates': jsonEncode({
+            first.id: {
+              'status': 'watched',
+              'manuallyWatched': true,
+              'knownEpisodes': 90,
+              'readEpisodes': 80,
+            },
+            second.id: {
+              'status': 'planned',
+              'manuallyWatched': false,
+              'knownEpisodes': 80,
+              'readEpisodes': 80,
+            },
+          }),
+          'lanRecords': '{}',
+          'profile.viewer.lanSettings': '{}',
+        }),
+      });
+      expect(store.configurationError, isNull);
+      expect(store.following(first.id)?.newEpisodes, 10);
+      expect(store.following(second.id)?.hasUpdates, isFalse);
+
+      await store.markUpdatesRead(first.id);
+      final values = _snapshotValues(store);
+      expect(values.keys.where((key) => key.contains('lan')), isEmpty);
+      final states = jsonDecode(values['followStates'] as String) as Map;
+      expect(states[first.id], {'knownEpisodes': 90, 'readEpisodes': 90});
+      expect(restartStore(store).following(first.id)?.hasUpdates, isFalse);
+    });
+
+    test('new episodes stay marked until read, not until watched', () async {
+      final store = await openStore();
+      await store.toggleFavorite(first);
+      expect(store.following(first.id)?.hasUpdates, isFalse);
+
+      await store.refreshDrama(drama('1', title: '旧资料', episodes: 86));
+      expect(store.following(first.id)?.newEpisodes, 6);
+      await store.saveWatch(watching(first, episode: 86));
+      expect(store.following(first.id)?.newEpisodes, 6);
+
+      await store.markUpdatesRead(first.id);
+      expect(store.following(first.id)?.hasUpdates, isFalse);
+      await store.refreshDrama(drama('1', title: '旧资料', episodes: 80));
+      expect(store.following(first.id)?.hasUpdates, isFalse);
+    });
+
+    test('unfollowing skips switched-off sources and keeps them', () async {
+      final store = await openStore();
+      final third = drama('3', title: '第三部');
+      for (final item in [first, second, third]) {
+        await store.toggleFavorite(item);
+      }
+      await store.saveWatch(watching(first));
+      await store.setSourceEnabled('hongguo', false);
+      await store.removeFavorites({first.id});
+      await store.setSourceEnabled('hongguo', true);
+      expect(store.favorites, hasLength(3));
+
+      await store.removeFavorites({first.id, third.id, 'hongguo:missing'});
+      expect(store.favorites.map((item) => item.id), [second.id]);
+      expect(store.following(first.id), isNull);
+      expect(store.watched(first.id), isNotNull);
+      expect(restartStore(store).favorites.single.id, second.id);
+    });
   });
 
   group('history', () {

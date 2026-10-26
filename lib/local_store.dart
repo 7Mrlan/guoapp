@@ -11,10 +11,7 @@ import 'download_preferences.dart';
 import 'catalog_sort.dart';
 import 'follow_state.dart';
 import 'hongguo_series.dart';
-import 'lan_sync_models.dart';
 import 'theme_color.dart';
-
-part 'local_store_sync.dart';
 
 class LocalStore extends ChangeNotifier {
   LocalStore(
@@ -27,7 +24,6 @@ class LocalStore extends ChangeNotifier {
   final SharedPreferences preferences;
   final Future<String> Function(String pin, String salt) _pinHasher;
   LocalSnapshot? _snapshot;
-  LanDocument? _lanDocumentCache;
   final Map<String, WatchEntry> _history = {};
   final Map<String, Drama> _favorites = {};
   final Map<String, FollowState> _followStates = {};
@@ -167,7 +163,6 @@ class LocalStore extends ChangeNotifier {
   }
 
   void _loadLibrary() {
-    _lanDocumentCache = null;
     _history.clear();
     _favorites.clear();
     _followStates.clear();
@@ -196,10 +191,7 @@ class LocalStore extends ChangeNotifier {
           Map<String, dynamic>.from(states[drama.id] as Map),
         );
       } catch (_) {
-        _followStates[drama.id] = FollowState.initial(
-          drama,
-          _history[drama.id],
-        );
+        _followStates[drama.id] = FollowState.initial(drama);
       }
     }
   }
@@ -265,7 +257,6 @@ class LocalStore extends ChangeNotifier {
     await _commit(
       {},
       remove: legacy.keys.map((id) => _key('seriesCandidates', id)),
-      trackSync: false,
     );
   }
 
@@ -280,12 +271,7 @@ class LocalStore extends ChangeNotifier {
       .reversed
       .toList();
   WatchEntry? watched(String id) {
-    WatchEntry? entry = _history[id];
-    if (entry == null && isFavorite(id)) {
-      try {
-        entry = lanDocument.records[id]?.watch;
-      } catch (_) {}
-    }
+    final entry = _history[id];
     return entry != null && allowsSource(entry.drama.source) ? entry : null;
   }
 
@@ -451,8 +437,6 @@ class LocalStore extends ChangeNotifier {
     Map<String, Object> changes, {
     Iterable<String> remove = const [],
     bool replace = false,
-    bool trackSync = true,
-    Set<String> clearSyncProgress = const {},
   }) async {
     final snapshot = _snapshot;
     if (snapshot == null) throw StateError('请先恢复本地配置');
@@ -461,13 +445,6 @@ class LocalStore extends ChangeNotifier {
       values.remove(key);
     }
     values.addAll(changes);
-    if (trackSync && !replace) {
-      _trackLanChanges(
-        values,
-        keys: {...changes.keys, ...remove},
-        clearProgress: clearSyncProgress,
-      );
-    }
     values.putIfAbsent(
       'profiles',
       () => jsonEncode(_profiles.map((profile) => profile.toJson()).toList()),
@@ -546,7 +523,7 @@ class LocalStore extends ChangeNotifier {
       } else {
         if (entries.length >= 20000) throw StateError('追剧数量已达上限，请先整理追剧');
         entries[drama.id] = drama;
-        states[drama.id] = FollowState.initial(drama, _history[drama.id]);
+        states[drama.id] = FollowState.initial(drama);
       }
       await _commit({
         _key('favorites'): jsonEncode(
@@ -563,21 +540,20 @@ class LocalStore extends ChangeNotifier {
     for (final entry in states.entries) entry.key: entry.value.toJson(),
   });
 
-  Future<void> setFollowStatus(Drama drama, FollowStatus status) {
+  Future<void> removeFavorites(Set<String> ids) {
     final epoch = _epoch;
     return _queue(() async {
-      if (!allowsSource(drama.source) || epoch != _epoch) return;
-      if (!_favorites.containsKey(drama.id) && _favorites.length >= 20000) {
-        throw StateError('追剧数量已达上限，请先整理追剧');
-      }
-      final current = _favorites[drama.id]?.merge(drama) ?? drama;
-      final entries = Map.of(_favorites)..[drama.id] = current;
-      final state =
-          (_followStates[drama.id] ??
-                  FollowState.initial(current, _history[drama.id]))
-              .observe(current)
-              .withStatus(status);
-      final states = Map.of(_followStates)..[drama.id] = state;
+      if (epoch != _epoch) return;
+      final removed = {
+        for (final id in ids)
+          if (_favorites[id] case final drama? when allowsSource(drama.source))
+            id,
+      };
+      if (removed.isEmpty) return;
+      final entries = Map.of(_favorites)
+        ..removeWhere((id, _) => removed.contains(id));
+      final states = Map.of(_followStates)
+        ..removeWhere((id, _) => removed.contains(id));
       await _commit({
         _key('favorites'): jsonEncode(
           entries.values.map((entry) => entry.toJson()).toList(),
@@ -636,7 +612,7 @@ class LocalStore extends ChangeNotifier {
       final states = Map.of(_followStates);
       final favorites = Map.of(_favorites);
       if (following != null) {
-        states[entry.drama.id] = following.afterPlayback(current);
+        states[entry.drama.id] = following.observe(current.drama);
         favorites[entry.drama.id] = favorites[entry.drama.id]!.merge(
           current.drama,
         );
@@ -692,11 +668,7 @@ class LocalStore extends ChangeNotifier {
     final epoch = _epoch;
     return _queue(() async {
       if (locked || epoch != _epoch) return;
-      await _commit(
-        {},
-        remove: [_key('history')],
-        clearSyncProgress: {..._history.keys, ...lanDocument.records.keys},
-      );
+      await _commit({}, remove: [_key('history')]);
       _loadLibrary();
       _notify();
     });
@@ -719,7 +691,7 @@ class LocalStore extends ChangeNotifier {
         _key('history'): jsonEncode(
           entries.values.map((entry) => entry.toJson()).toList(),
         ),
-      }, clearSyncProgress: removed);
+      });
       _loadLibrary();
       _notify();
     });
@@ -991,7 +963,6 @@ class LocalStore extends ChangeNotifier {
       'libraries': {
         for (final profile in _profiles)
           profile.id: {
-            ..._backupFollowSync(profile.id),
             'history': readJsonList(_string(_key('history', profile.id))),
             'favorites': readJsonList(_string(_key('favorites', profile.id))),
             'followStates': jsonDecode(
@@ -1070,7 +1041,6 @@ class LocalStore extends ChangeNotifier {
       final states = library['followStates'] as Map? ?? {};
       final seriesCandidates = library['seriesCandidates'] as List? ?? [];
       final favoriteIds = favorites.map((row) => (row as Map)['id']).toSet();
-      _readBackupFollowSync(library);
       if (states.length > 20000 ||
           states.keys.any((id) => id is! String || !favoriteIds.contains(id))) {
         throw const FormatException('备份追剧状态无效');
@@ -1133,12 +1103,7 @@ class LocalStore extends ChangeNotifier {
     final libraries = data['libraries'] as Map;
     for (final profile in profiles) {
       final library = libraries[profile.id] as Map;
-      final syncRecords = _readBackupFollowSync(library);
       values.addAll({
-        if (syncRecords != null)
-          _key('lanRecords', profile.id): jsonEncode(
-            LanDocument(replica: lanID(), records: syncRecords).toJson(),
-          ),
         _key('history', profile.id): jsonEncode(library['history']),
         _key('favorites', profile.id): jsonEncode(library['favorites']),
         _key('followStates', profile.id): jsonEncode(
