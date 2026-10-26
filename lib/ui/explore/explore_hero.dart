@@ -79,7 +79,7 @@ class ExploreHero extends StatelessWidget {
           button: 40,
           detail: false,
         ),
-        FormFactor.wide when AppScope.of(context).desktop => (
+        FormFactor.window => (
           design: 1312,
           height: 232,
           radius: 24,
@@ -93,7 +93,7 @@ class ExploreHero extends StatelessWidget {
           button: 40,
           detail: true,
         ),
-        FormFactor.wide => (
+        FormFactor.pad => (
           design: 914,
           height: 224,
           radius: 24,

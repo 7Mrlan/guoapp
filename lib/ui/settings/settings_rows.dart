@@ -5,7 +5,12 @@ import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
 
 bool settingsSplit(BuildContext context) =>
-    AppScope.of(context).television || MediaQuery.sizeOf(context).width >= 840;
+    switch (AppScope.formFactorOf(context)) {
+      FormFactor.phone => false,
+      FormFactor.television => true,
+      FormFactor.pad ||
+      FormFactor.window => MediaQuery.sizeOf(context).width >= 840,
+    };
 
 Future<void> saveSetting(
   BuildContext context,

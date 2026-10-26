@@ -1,9 +1,11 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../app_build.dart';
+import '../app_device.dart';
 import '../core_bridge.dart';
 import '../local_store.dart';
 import '../theme_color.dart';
@@ -40,6 +42,7 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
   Color? _systemColor;
   int? _profileEpoch;
   var _television = false;
+  var _phone = false;
 
   @override
   void initState() {
@@ -161,9 +164,17 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
 
   Widget _application(LocalStore? store) {
     _resetRoutes(store);
-    final mode = store?.displayMode ?? 'auto';
-    final television =
-        mode == 'television' || mode == 'auto' && widget.television;
+    final formFactor = switch (store?.displayMode) {
+      'television' => FormFactor.television,
+      'phone' => FormFactor.phone,
+      'pad' => FormFactor.pad,
+      'window' => desktopPlatform ? FormFactor.window : FormFactor.pad,
+      _ => widget.television ? FormFactor.television : null,
+    };
+    final television = formFactor == FormFactor.television;
+    if (television != _television) {
+      unawaited(AppDevice.setTelevisionMode(television));
+    }
     _television = television;
     final systemColor = (store?.followSystemColor ?? true)
         ? _systemColor
@@ -203,26 +214,28 @@ class _DuanjuAppState extends State<DuanjuApp> with WidgetsBindingObserver {
             },
             child: AppScope(
               repository: widget.repository,
-              television: television,
-              desktop:
-                  mode != 'pad' &&
-                  switch (defaultTargetPlatform) {
-                    TargetPlatform.windows ||
-                    TargetPlatform.macOS ||
-                    TargetPlatform.linux => true,
-                    _ => false,
-                  },
+              formFactor: formFactor,
               systemColorAvailable: _systemColor != null,
               version: widget.version,
-              child: FocusOutlineMotion(
-                child: FocusOutlineLayer(
-                  child: FocusTraversalGroup(
-                    policy: ReadingOrderTraversalPolicy(
-                      requestFocusCallback: revealFocus,
+              child: Builder(
+                builder: (context) {
+                  final phone =
+                      AppScope.formFactorOf(context) == FormFactor.phone;
+                  if (phone != _phone) {
+                    _phone = phone;
+                    unawaited(AppDevice.setPhoneMode(phone));
+                  }
+                  return FocusOutlineMotion(
+                    child: FocusOutlineLayer(
+                      child: FocusTraversalGroup(
+                        policy: ReadingOrderTraversalPolicy(
+                          requestFocusCallback: revealFocus,
+                        ),
+                        child: child!,
+                      ),
                     ),
-                    child: child!,
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ),

@@ -76,21 +76,39 @@ class _PlaybackPageState extends State<PlaybackPage> {
 
   @override
   Widget build(BuildContext context) {
+    final form = AppScope.formFactorOf(context);
     if (defaultTargetPlatform == TargetPlatform.windows) {
-      if (AppScope.formFactorOf(context) == FormFactor.phone) {
-        return PortraitPlayerPage(store: widget.store, handle: widget.handle);
-      }
-      return AppScope.of(context).desktop
-          ? PlayerPage(store: widget.store, handle: widget.handle)
-          : _padPage(context);
+      final size = MediaQuery.sizeOf(context);
+      return switch (form) {
+        FormFactor.phone when _wideVideo => LandscapePlayerPage(
+          store: widget.store,
+          handle: widget.handle,
+        ),
+        FormFactor.phone => PortraitPlayerPage(
+          store: widget.store,
+          handle: widget.handle,
+        ),
+        FormFactor.pad => _padPage(context),
+        FormFactor.window
+            when _padFullscreen.value || size.width <= size.height =>
+          _padPage(context),
+        FormFactor.window || FormFactor.television => PlayerPage(
+          store: widget.store,
+          handle: widget.handle,
+        ),
+      };
     }
-    final touch = !AppScope.of(context).television;
-    if (touch && MediaQuery.sizeOf(context).shortestSide >= 600) {
-      return _padPage(context);
-    }
-    return touch && _wideVideo
-        ? LandscapePlayerPage(store: widget.store, handle: widget.handle)
-        : PortraitPlayerPage(store: widget.store, handle: widget.handle);
+    return switch (form) {
+      FormFactor.pad || FormFactor.window => _padPage(context),
+      FormFactor.phone when _wideVideo => LandscapePlayerPage(
+        store: widget.store,
+        handle: widget.handle,
+      ),
+      FormFactor.phone || FormFactor.television => PortraitPlayerPage(
+        store: widget.store,
+        handle: widget.handle,
+      ),
+    };
   }
 
   Widget _padPage(BuildContext context) {

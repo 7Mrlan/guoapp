@@ -321,7 +321,7 @@ class LocalStore extends ChangeNotifier {
       _configurationError == null ? _bool(_key('hideVip')) ?? true : true;
   String get displayMode {
     final value = _configurationError == null ? _string('displayMode') : null;
-    return {'auto', 'television', 'standard', 'pad'}.contains(value)
+    return {'auto', 'television', 'phone', 'pad', 'window'}.contains(value)
         ? value!
         : 'auto';
   }
@@ -478,7 +478,7 @@ class LocalStore extends ChangeNotifier {
   }
 
   Future<void> setDisplayMode(String value) =>
-      {'auto', 'television', 'standard', 'pad'}.contains(value)
+      {'auto', 'television', 'phone', 'pad', 'window'}.contains(value)
       ? _setting('displayMode', value)
       : Future.value();
   Future<void> setThemeMode(String value) =>
@@ -1088,8 +1088,9 @@ class LocalStore extends ChangeNotifier {
           {
             'auto',
             'television',
-            'standard',
+            'phone',
             'pad',
+            'window',
           }.contains(data['displayMode'])
           ? data['displayMode'] as String
           : 'auto',

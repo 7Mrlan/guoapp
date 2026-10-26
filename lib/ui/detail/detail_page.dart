@@ -370,12 +370,12 @@ class _DetailPageState extends State<DetailPage> {
           ),
         );
       }
-      final scope = AppScope.of(context);
-      if (scope.television) return _televisionPage(details);
-      if (MediaQuery.sizeOf(context).width < 840) {
+      final form = AppScope.formFactorOf(context);
+      if (form == FormFactor.television) return _televisionPage(details);
+      if (form == FormFactor.phone || MediaQuery.sizeOf(context).width < 840) {
         return _phonePage(details);
       }
-      return _widePage(details, desktop: scope.desktop);
+      return _widePage(details, desktop: form == FormFactor.window);
     },
   );
 

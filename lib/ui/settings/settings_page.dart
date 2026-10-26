@@ -101,7 +101,7 @@ class _SettingsPageState extends State<SettingsPage> {
         scope.systemColorAvailable && store.followSystemColor
             ? '系统取色'
             : store.themeColor.label,
-        displayModes[store.displayMode],
+        displayModes[platformDisplayMode(store.displayMode)],
       ].join(' · '),
       SettingsGroup.playback => '倍速、清晰度、连播与弹幕',
       SettingsGroup.download => '默认画质、目录与空间、同时下载数量',

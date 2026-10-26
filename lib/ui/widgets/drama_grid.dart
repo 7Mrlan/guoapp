@@ -17,12 +17,12 @@ import 'focus_ring.dart';
         20.0,
         24.0,
       ),
-      FormFactor.wide when AppScope.of(context).desktop => (
+      FormFactor.window => (
         math.max(2, ((width + 18) / 178).floor()),
         18.0,
         24.0,
       ),
-      FormFactor.wide => ((width / 180).floor().clamp(4, 9), 18.0, 22.0),
+      FormFactor.pad => ((width / 180).floor().clamp(4, 9), 18.0, 22.0),
     };
 
 double dramaTileWidth(BuildContext context, double width) {

@@ -105,6 +105,7 @@ class MainActivity : FlutterActivity() {
         requestedOrientation = when (mode) {
             "landscape", "lockedLandscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             "portrait" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+            "lockedPortrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
         if (!landscape && mode != "portrait") return

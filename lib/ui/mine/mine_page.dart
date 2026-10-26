@@ -41,7 +41,7 @@ class MinePage extends StatelessWidget {
         listenable: Listenable.merge([store, downloads]),
         builder: (context, _) => switch (AppScope.formFactorOf(context)) {
           FormFactor.phone => _phone(context),
-          FormFactor.wide => _wide(context),
+          FormFactor.pad || FormFactor.window => _wide(context),
           FormFactor.television => _television(context),
         },
       ),
@@ -143,7 +143,7 @@ class MinePage extends StatelessWidget {
   }
 
   Widget _wide(BuildContext context) {
-    final desktop = AppScope.of(context).desktop;
+    final desktop = AppScope.formFactorOf(context) == FormFactor.window;
     final side = desktop ? 360.0 : 340.0;
     final gap = desktop ? 32.0 : 28.0;
     const sectionPadding = EdgeInsets.fromLTRB(4, 12, 0, 0);

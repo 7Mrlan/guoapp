@@ -156,7 +156,7 @@ class _FollowPageState extends State<FollowPage> {
         },
         child: switch (AppScope.formFactorOf(context)) {
           FormFactor.phone => _phone(context, view),
-          FormFactor.wide => _wide(context, view),
+          FormFactor.pad || FormFactor.window => _wide(context, view),
           FormFactor.television => _television(context, view),
         },
       );
@@ -431,8 +431,8 @@ class _FollowPageState extends State<FollowPage> {
         return (3, 10, 20);
       case FormFactor.television:
         return (6, 20, 24);
-      case FormFactor.wide:
-        final desktop = AppScope.of(context).desktop;
+      case FormFactor.pad || FormFactor.window:
+        final desktop = AppScope.formFactorOf(context) == FormFactor.window;
         final minimum = desktop ? 140.0 : 120.0;
         final gap = desktop ? 18.0 : 16.0;
         final columns = ((width + gap) / (minimum + gap)).floor().clamp(1, 99);

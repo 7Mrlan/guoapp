@@ -28,7 +28,10 @@ enum AppTab {
 Future<T?> openPage<T>(BuildContext context, WidgetBuilder builder) =>
     Navigator.of(
       context,
-      rootNavigator: AppScope.formFactorOf(context) != FormFactor.wide,
+      rootNavigator: switch (AppScope.formFactorOf(context)) {
+        FormFactor.phone || FormFactor.television => true,
+        FormFactor.pad || FormFactor.window => false,
+      },
     ).push(MaterialPageRoute<T>(builder: builder));
 
 class AppShell extends StatefulWidget {
@@ -179,7 +182,7 @@ class _AppShellState extends State<AppShell> {
                   ],
                 ),
         ),
-        FormFactor.wide => _wide(pages),
+        FormFactor.pad || FormFactor.window => _wide(pages),
         FormFactor.television => Scaffold(
           body: SafeArea(
             child: Column(
@@ -339,7 +342,7 @@ class _SideBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = _sideMetrics(
-      desktop: AppScope.of(context).desktop,
+      desktop: AppScope.formFactorOf(context) == FormFactor.window,
       expanded: expanded,
     );
     return Material(

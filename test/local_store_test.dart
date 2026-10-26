@@ -126,7 +126,7 @@ void main() {
     test('values written by other versions fall back to defaults', () async {
       final store = await openStore({
         LocalSnapshot.storageKey: _snapshot({
-          'displayMode': 'foldable',
+          'displayMode': 'standard',
           'themeMode': 'sepia',
           'sourceSwitches': 'not json',
           'sourceGateEnabled': false,

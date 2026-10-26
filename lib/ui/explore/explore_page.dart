@@ -90,7 +90,7 @@ class ExplorePageState extends State<ExplorePage> {
       final source = explore.source;
       final form = AppScope.formFactorOf(context);
       final television = form == FormFactor.television;
-      final desktop = form == FormFactor.wide && AppScope.of(context).desktop;
+      final desktop = form == FormFactor.window;
       _resetScroll(explore);
       if (source == null) {
         return Scaffold(
@@ -113,7 +113,7 @@ class ExplorePageState extends State<ExplorePage> {
       }
       final inset = switch (form) {
         FormFactor.phone => 16.0,
-        FormFactor.wide => 24.0,
+        FormFactor.pad || FormFactor.window => 24.0,
         FormFactor.television => televisionInset,
       };
       final tabs = Padding(
@@ -189,7 +189,7 @@ class ExplorePageState extends State<ExplorePage> {
       );
     }
     final phone = AppScope.formFactorOf(context) == FormFactor.phone;
-    final desktop = !phone && !television && AppScope.of(context).desktop;
+    final desktop = AppScope.formFactorOf(context) == FormFactor.window;
     return LayoutBuilder(
       builder: (context, constraints) {
         final scroll = CustomScrollView(

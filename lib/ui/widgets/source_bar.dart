@@ -45,7 +45,7 @@ class SourceBar extends StatelessWidget {
         title: source,
         actions: [switcher, search, ...actions],
       ),
-      FormFactor.wide => PageHeader(
+      FormFactor.pad || FormFactor.window => PageHeader(
         title: source,
         actions: [
           switcher,

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../app_device.dart';
 import '../../local_store.dart';
@@ -70,6 +71,9 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (widget.onFullscreen == null) {
+      unawaited(AppDevice.setPlayerOrientation(PlayerOrientation.auto));
+    }
     _session.addListener(_bind);
     _bind();
     _scheduleHide();
@@ -111,7 +115,10 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     _seekTimer?.cancel();
     if (_holding) _session.endBoost();
     if (widget.onFullscreen == null) {
-      unawaited(AppDevice.setPlayerOrientation(PlayerOrientation.auto));
+      if (_full == true && defaultTargetPlatform == TargetPlatform.windows) {
+        unawaited(windowManager.setFullScreen(false).catchError((Object _) {}));
+      }
+      unawaited(AppDevice.releaseOrientation());
       unawaited(
         SystemChrome.setEnabledSystemUIMode(
           SystemUiMode.edgeToEdge,
@@ -287,9 +294,11 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
   }
 
   void _rotate(bool full) => unawaited(
-    AppDevice.setPlayerOrientation(
-      full ? PlayerOrientation.portrait : PlayerOrientation.landscape,
-    ),
+    defaultTargetPlatform == TargetPlatform.windows
+        ? windowManager.setFullScreen(!full).catchError((Object _) {})
+        : AppDevice.setPlayerOrientation(
+            full ? PlayerOrientation.portrait : PlayerOrientation.landscape,
+          ),
   );
 
   void _back(bool full) {

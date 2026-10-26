@@ -11,10 +11,19 @@ const themeModes = {'light': '浅色', 'dark': '深色', 'system': '跟随系统
 
 const displayModes = {
   'auto': '自动识别设备',
-  'television': '电视 / 遥控器',
-  'standard': '手机 / 电脑',
+  'television': '电视',
+  'phone': '手机',
   'pad': '平板',
+  'window': '窗口',
 };
+
+Map<String, String> get availableDisplayModes => {
+  for (final MapEntry(:key, :value) in displayModes.entries)
+    if (desktopPlatform || key != 'window') key: value,
+};
+
+String platformDisplayMode(String mode) =>
+    mode == 'window' && !desktopPlatform ? 'pad' : mode;
 
 class AppearanceSettings extends StatelessWidget {
   const AppearanceSettings({super.key, required this.store});
@@ -118,13 +127,13 @@ class AppearanceSettings extends StatelessWidget {
           children: [
             SettingsTile(
               title: '界面模式',
-              subtitle: displayModes[store.displayMode]!,
+              subtitle: displayModes[platformDisplayMode(store.displayMode)]!,
               onTap: () async {
                 final selection = await showOptionDialog(
                   context,
                   title: '界面模式',
-                  options: displayModes,
-                  selected: store.displayMode,
+                  options: availableDisplayModes,
+                  selected: platformDisplayMode(store.displayMode),
                 );
                 if (selection != null && context.mounted) {
                   await saveSetting(

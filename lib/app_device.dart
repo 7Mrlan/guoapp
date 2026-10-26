@@ -9,6 +9,8 @@ class AppDevice {
   final bool television;
   final String version;
   static const channel = MethodChannel('duanju/device');
+  static var _televisionMode = false;
+  static var _phoneMode = false;
 
   static Future<AppDevice> detect({
     AppDevice fallback = const AppDevice(),
@@ -64,6 +66,28 @@ class AppDevice {
     }
   }
 
+  static Future<void> setTelevisionMode(bool enabled) async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      _televisionMode = enabled;
+      return setPlayerOrientation(PlayerOrientation.auto);
+    }
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      await channel.invokeMethod<void>('setTelevisionMode', {
+        'enabled': enabled,
+      });
+    } catch (_) {}
+  }
+
+  static Future<void> setPhoneMode(bool enabled) {
+    _phoneMode = enabled;
+    return releaseOrientation();
+  }
+
+  static Future<void> releaseOrientation() => setPlayerOrientation(
+    _phoneMode ? PlayerOrientation.lockedPortrait : PlayerOrientation.auto,
+  );
+
   static Future<void> setPlayerOrientation(
     PlayerOrientation orientation,
   ) async {
@@ -76,13 +100,16 @@ class AppDevice {
       return;
     }
     try {
-      await SystemChrome.setPreferredOrientations(switch (orientation) {
+      await SystemChrome.setPreferredOrientations(switch (_televisionMode
+          ? PlayerOrientation.landscape
+          : orientation) {
         PlayerOrientation.landscape ||
         PlayerOrientation.lockedLandscape => const [
           DeviceOrientation.landscapeLeft,
           DeviceOrientation.landscapeRight,
         ],
-        PlayerOrientation.portrait => const [DeviceOrientation.portraitUp],
+        PlayerOrientation.portrait || PlayerOrientation.lockedPortrait =>
+          const [DeviceOrientation.portraitUp],
         PlayerOrientation.auto => const [],
       });
     } catch (_) {}
@@ -100,4 +127,10 @@ class AppDevice {
   }
 }
 
-enum PlayerOrientation { landscape, lockedLandscape, portrait, auto }
+enum PlayerOrientation {
+  landscape,
+  lockedLandscape,
+  portrait,
+  lockedPortrait,
+  auto,
+}

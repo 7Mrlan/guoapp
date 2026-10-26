@@ -64,7 +64,7 @@ class _CategoryTabsState<T> extends State<CategoryTabs<T>> {
     final colors = Theme.of(context).colorScheme;
     final (height, fontSize, padding, fade) = switch (form) {
       FormFactor.phone => (48.0, 15.0, 12.0, 32.0),
-      FormFactor.wide => (48.0, 14.0, 14.0, 40.0),
+      FormFactor.pad || FormFactor.window => (48.0, 14.0, 14.0, 40.0),
       FormFactor.television => (44.0, 16.0, 16.0, 48.0),
     };
     _keys.removeWhere(

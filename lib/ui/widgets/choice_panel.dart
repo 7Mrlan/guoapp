@@ -59,7 +59,7 @@ Future<T?> showChoicePanel<T>({
     selected: selected,
     columns: switch (form) {
       FormFactor.phone => grid.phone,
-      FormFactor.wide => grid.wide,
+      FormFactor.pad || FormFactor.window => grid.wide,
       FormFactor.television => grid.television,
     },
     action: action,
@@ -76,7 +76,7 @@ Future<T?> showChoicePanel<T>({
         backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
         builder: panel,
       );
-    case FormFactor.wide:
+    case FormFactor.pad || FormFactor.window:
       final overlay =
           navigator.overlay!.context.findRenderObject()! as RenderBox;
       final anchor = context.findRenderObject()! as RenderBox;
@@ -156,7 +156,9 @@ class _ChoicePanel<T> extends StatelessWidget {
                 style: (television ? text.headlineSmall : text.titleLarge)
                     ?.copyWith(
                       fontWeight: FontWeight.w700,
-                      fontSize: form == FormFactor.wide ? 17 : null,
+                      fontSize: television || form == FormFactor.phone
+                          ? null
+                          : 17,
                     ),
               ),
               Text(
@@ -178,7 +180,8 @@ class _ChoicePanel<T> extends StatelessWidget {
     return Padding(
       padding: switch (form) {
         FormFactor.phone => const EdgeInsets.fromLTRB(16, 0, 4, 20),
-        FormFactor.wide => const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        FormFactor.pad ||
+        FormFactor.window => const EdgeInsets.fromLTRB(16, 12, 16, 12),
         FormFactor.television => const EdgeInsets.fromLTRB(32, 36, 48, 32),
       },
       child: Column(
@@ -202,7 +205,7 @@ class _ChoicePanel<T> extends StatelessWidget {
                   crossAxisSpacing: spacing,
                   mainAxisExtent: switch (form) {
                     FormFactor.phone => 44,
-                    FormFactor.wide => 36,
+                    FormFactor.pad || FormFactor.window => 36,
                     FormFactor.television => 48,
                   },
                 ),
@@ -250,7 +253,7 @@ class _ChoiceCell<T> extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final radius = switch (form) {
       FormFactor.phone => 12.0,
-      FormFactor.wide => 10.0,
+      FormFactor.pad || FormFactor.window => 10.0,
       FormFactor.television => 14.0,
     };
     return FocusRing(
