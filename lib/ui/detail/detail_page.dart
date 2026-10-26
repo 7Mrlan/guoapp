@@ -239,8 +239,6 @@ class _DetailPageState extends State<DetailPage> {
     ).showSnackBar(SnackBar(content: Text(details.error!)));
   }
 
-  bool get _playable => !AppScope.of(context).television;
-
   double _startAt(int index, {required bool resume}) {
     final watch = _details!.watch;
     return resume &&
@@ -278,8 +276,7 @@ class _DetailPageState extends State<DetailPage> {
         _watching ||
         !mounted ||
         !_ready ||
-        !details.allowed ||
-        !_playable) {
+        !details.allowed) {
       return;
     }
     final index = details.resumeIndex;
@@ -291,13 +288,6 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   Future<void> _play(int index, {bool resume = false}) async {
-    if (!_playable) {
-      await openPage<void>(
-        context,
-        (_) => const PendingPage(title: '播放', icon: Icons.play_circle_outline),
-      );
-      return;
-    }
     final details = _details!;
     final episode = details.episodes[index];
     if (episode.vip &&
@@ -334,6 +324,16 @@ class _DetailPageState extends State<DetailPage> {
       ),
     );
     _watching = false;
+    if (mounted && AppScope.of(context).television) _focusWatched(details);
+  }
+
+  void _focusWatched(DramaDetails details) {
+    final index = details.currentIndex;
+    if (index == null) return;
+    details.selectGroup(index ~/ episodeGroupSize);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _episodeFocus[index % episodeGroupSize].requestFocus();
+    });
   }
 
   void _download() => openPage<void>(

@@ -13,6 +13,7 @@ import 'landscape_player_page.dart';
 import 'playback_handle.dart';
 import 'player_page.dart';
 import 'portrait_player_page.dart';
+import 'television_player_page.dart';
 
 class PlaybackPage extends StatefulWidget {
   const PlaybackPage({super.key, required this.store, required this.handle});
@@ -92,10 +93,11 @@ class _PlaybackPageState extends State<PlaybackPage> {
         FormFactor.window
             when _padFullscreen.value || size.width <= size.height =>
           _padPage(context),
-        FormFactor.window || FormFactor.television => PlayerPage(
+        FormFactor.window => PlayerPage(
           store: widget.store,
           handle: widget.handle,
         ),
+        FormFactor.television => TelevisionPlayerPage(handle: widget.handle),
       };
     }
     return switch (form) {
@@ -104,10 +106,11 @@ class _PlaybackPageState extends State<PlaybackPage> {
         store: widget.store,
         handle: widget.handle,
       ),
-      FormFactor.phone || FormFactor.television => PortraitPlayerPage(
+      FormFactor.phone => PortraitPlayerPage(
         store: widget.store,
         handle: widget.handle,
       ),
+      FormFactor.television => TelevisionPlayerPage(handle: widget.handle),
     };
   }
 

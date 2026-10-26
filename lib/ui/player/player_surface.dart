@@ -963,9 +963,11 @@ class PlaybackFailure extends StatelessWidget {
     super.key,
     required this.session,
     required this.error,
+    this.retryFocus,
   });
   final PlaybackSession session;
   final String error;
+  final FocusNode? retryFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -1012,6 +1014,7 @@ class PlaybackFailure extends StatelessWidget {
                 alignment: WrapAlignment.center,
                 children: [
                   FilledButton(
+                    focusNode: retryFocus,
                     onPressed: session.retry,
                     child: Text(session.localFailure ? '重试本地播放' : '重试'),
                   ),
