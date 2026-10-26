@@ -26,6 +26,7 @@ dependencies:
   window_manager: ^0.5.1
   package_info_plus: ^10.2.1
   dynamic_color: ^2.1.0
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
