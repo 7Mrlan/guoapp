@@ -189,7 +189,7 @@ class ProgressPoster extends StatelessWidget {
     this.badge,
   });
   final Drama drama;
-  final double progress;
+  final double? progress;
   final String caption;
   final String? tag;
   final String? badge;
@@ -282,22 +282,23 @@ class ProgressPoster extends StatelessWidget {
                   ),
                 ),
               ),
-            Positioned(
-              left: television ? 8 : _coverRadius,
-              right: television ? 8 : _coverRadius,
-              bottom: television ? 8 : 0,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(television ? 2 : 1.5),
-                child: LinearProgressIndicator(
-                  value: progress.clamp(0.0, 1.0),
-                  minHeight: television ? 4 : 3,
-                  color: colors.primaryFixedDim,
-                  backgroundColor: Colors.white.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.zero,
-                  stopIndicatorColor: Colors.transparent,
+            if (progress case final progress?)
+              Positioned(
+                left: television ? 8 : _coverRadius,
+                right: television ? 8 : _coverRadius,
+                bottom: television ? 8 : 0,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(television ? 2 : 1.5),
+                  child: LinearProgressIndicator(
+                    value: progress.clamp(0.0, 1.0),
+                    minHeight: television ? 4 : 3,
+                    color: colors.primaryFixedDim,
+                    backgroundColor: Colors.white.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.zero,
+                    stopIndicatorColor: Colors.transparent,
+                  ),
                 ),
               ),
-            ),
             if (selected case final selected?) ...[
               if (selected)
                 IgnorePointer(

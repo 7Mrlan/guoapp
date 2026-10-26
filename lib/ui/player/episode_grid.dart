@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +7,6 @@ import 'package:flutter/material.dart';
 import '../../models.dart';
 import '../widgets/cover_image.dart';
 
-const _columns = 5;
 const _cellHeight = 48.0;
 const _cellGap = 8.0;
 const _rowExtent = _cellHeight + _cellGap;
@@ -23,6 +23,10 @@ class EpisodeGrid extends StatefulWidget {
     required this.onPick,
     this.touch = false,
     this.header,
+    this.downloaded = const {},
+    this.downloading = const {},
+    this.minCellWidth,
+    this.inset = 16,
   });
   final List<Episode> episodes;
   final int current;
@@ -32,6 +36,10 @@ class EpisodeGrid extends StatefulWidget {
   final ValueChanged<int> onPick;
   final bool touch;
   final Widget? header;
+  final Set<int> downloaded;
+  final Set<int> downloading;
+  final double? minCellWidth;
+  final double inset;
 
   @override
   State<EpisodeGrid> createState() => _EpisodeGridState();
@@ -47,10 +55,13 @@ class _EpisodeGridState extends State<EpisodeGrid> {
   Timer? _autoScroll;
   double _gridWidth = 0;
   double _gridHeight = 0;
+  int _columns = 5;
   int _revealed = -1;
 
   List<Episode> get _episodes => widget.episodes;
   Set<int> get _selected => widget.selected;
+  bool _locked(int index) =>
+      widget.downloaded.contains(index) || widget.downloading.contains(index);
 
   @override
   void didUpdateWidget(EpisodeGrid oldWidget) {
@@ -68,12 +79,12 @@ class _EpisodeGridState extends State<EpisodeGrid> {
   double get _top => _listTop + (_headerKey.currentContext?.size?.height ?? 0);
 
   double get _cellWidth =>
-      (_gridWidth - 32 - _cellGap * (_columns - 1)) / _columns;
+      (_gridWidth - widget.inset * 2 - _cellGap * (_columns - 1)) / _columns;
 
   int? _hit(Offset point, {bool exact = false}) {
     if (_episodes.isEmpty || !_scroll.hasClients) return null;
     final pitch = _cellWidth + _cellGap;
-    final x = point.dx - 16;
+    final x = point.dx - widget.inset;
     final y = point.dy + _scroll.offset - _top;
     if (exact &&
         (x < 0 ||
@@ -96,7 +107,10 @@ class _EpisodeGridState extends State<EpisodeGrid> {
     if (adds == null) return;
     final first = index < _dragAnchor ? index : _dragAnchor;
     final last = index < _dragAnchor ? _dragAnchor : index;
-    final range = [for (var item = first; item <= last; item++) item];
+    final range = [
+      for (var item = first; item <= last; item++)
+        if (!_locked(item)) item,
+    ];
     _selected
       ..clear()
       ..addAll(_dragBase);
@@ -105,6 +119,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
   }
 
   void _toggle(int index) {
+    if (_locked(index)) return;
     if (!_selected.remove(index)) _selected.add(index);
     widget.onSelectionChanged();
   }
@@ -171,7 +186,7 @@ class _EpisodeGridState extends State<EpisodeGrid> {
   }
 
   void _reveal({required bool animate}) {
-    if (!mounted || !_scroll.hasClients) return;
+    if (!mounted || !_scroll.hasClients || widget.current < 0) return;
     final top = _top + widget.current ~/ _columns * _rowExtent;
     final position = _scroll.position;
     final view = position.viewportDimension;
@@ -200,6 +215,14 @@ class _EpisodeGridState extends State<EpisodeGrid> {
     builder: (context, constraints) {
       _gridWidth = constraints.maxWidth;
       _gridHeight = constraints.maxHeight;
+      _columns = switch (widget.minCellWidth) {
+        null => 5,
+        final minimum => max(
+          1,
+          ((_gridWidth - widget.inset * 2 + _cellGap) / (minimum + _cellGap))
+              .floor(),
+        ),
+      };
       if (_revealed != widget.current) {
         final animate = _revealed >= 0;
         _revealed = widget.current;
@@ -232,7 +255,14 @@ class _EpisodeGridState extends State<EpisodeGrid> {
                             selected: selecting
                                 ? _selected.contains(index)
                                 : null,
-                            onPressed: !selecting
+                            marker: widget.downloaded.contains(index)
+                                ? Icons.check_rounded
+                                : widget.downloading.contains(index)
+                                ? Icons.arrow_downward_rounded
+                                : null,
+                            onPressed: _locked(index)
+                                ? null
+                                : !selecting
                                 ? () => widget.onPick(index)
                                 : widget.touch
                                 ? () => _toggle(index)
@@ -253,7 +283,12 @@ class _EpisodeGridState extends State<EpisodeGrid> {
               child: KeyedSubtree(key: _headerKey, child: header),
             ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, _listTop, 16, 8),
+            padding: EdgeInsets.fromLTRB(
+              widget.inset,
+              _listTop,
+              widget.inset,
+              8,
+            ),
             sliver: rows,
           ),
         ],
@@ -294,12 +329,14 @@ class _EpisodeCell extends StatelessWidget {
     required this.watched,
     required this.selected,
     required this.onPressed,
+    this.marker,
   });
   final Episode episode;
   final bool current;
   final bool watched;
   final bool? selected;
   final VoidCallback? onPressed;
+  final IconData? marker;
 
   @override
   Widget build(BuildContext context) {
@@ -307,18 +344,26 @@ class _EpisodeCell extends StatelessWidget {
     final colors = theme.colorScheme;
     final foreground = current
         ? colors.onPrimaryContainer
-        : watched
+        : watched || marker != null
         ? colors.onSurfaceVariant
         : colors.onSurface;
     final radius = BorderRadius.circular(12);
     return Semantics(
       button: true,
       selected: selected ?? current,
-      label: '第 ${episode.number} 集${episode.vip ? '，VIP' : ''}',
+      label:
+          '第 ${episode.number} 集${episode.vip ? '，VIP' : ''}'
+          '${marker == null
+              ? ''
+              : marker == Icons.check_rounded
+              ? '，已下载'
+              : '，下载中'}',
       excludeSemantics: true,
       child: Material(
         color: current
             ? colors.primaryContainer
+            : marker != null
+            ? colors.surfaceContainer
             : theme.brightness == Brightness.dark
             ? colors.surfaceContainerHigh
             : colors.surfaceContainerLowest,
@@ -351,6 +396,12 @@ class _EpisodeCell extends StatelessWidget {
                   ),
                 ],
               ),
+              if (marker case final marker?)
+                Positioned(
+                  left: 6,
+                  top: 6,
+                  child: Icon(marker, size: 13, color: foreground),
+                ),
               if (episode.vip)
                 const Positioned(
                   right: 0,

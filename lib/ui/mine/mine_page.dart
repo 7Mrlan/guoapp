@@ -6,10 +6,10 @@ import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
 import '../detail/detail_page.dart';
+import '../downloads/downloads_page.dart';
 import '../history/history_page.dart';
 import '../shell/app_shell.dart';
 import '../settings/settings_page.dart';
-import '../shell/pending_pages.dart';
 import '../widgets/cover_image.dart';
 import '../widgets/drama_tile.dart';
 import '../widgets/focus_ring.dart';
@@ -53,7 +53,7 @@ class MinePage extends StatelessWidget {
 
   void _openDownloads(BuildContext context) => openPage<void>(
     context,
-    (_) => const PendingPage(title: '下载', icon: Icons.download_rounded),
+    (_) => DownloadsPage(store: store, downloads: downloads),
   );
 
   Widget _userCard(BuildContext context) =>
@@ -224,8 +224,6 @@ class MinePage extends StatelessWidget {
     );
     final history = store.history;
     final recent = history.take(columns - 1).toList();
-    final current = downloads.current;
-    final active = downloads.active;
     return LayoutBuilder(
       builder: (context, constraints) {
         final tile =
@@ -306,20 +304,6 @@ class MinePage extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (store.canDownload)
-                      Expanded(
-                        child: _TelevisionEntry(
-                          icon: Icons.download_rounded,
-                          title: '下载',
-                          subtitle: current != null
-                              ? '$active 集下载中 · ${(current.progress * 100).round()}%'
-                              : downloads.completed == 0
-                              ? '还没有下载任务'
-                              : '已完成 ${downloads.completed} 集 · ${_size(downloads.completedBytes)}',
-                          progress: current?.progress,
-                          onTap: () => _openDownloads(context),
-                        ),
-                      ),
                   ],
                 ),
               ],
@@ -679,7 +663,6 @@ class _TelevisionEntry extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.primary = false,
-    this.progress,
     this.focusNode,
   });
   final IconData icon;
@@ -687,7 +670,6 @@ class _TelevisionEntry extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final bool primary;
-  final double? progress;
   final FocusNode? focusNode;
 
   @override
@@ -752,15 +734,6 @@ class _TelevisionEntry extends StatelessWidget {
                             color: colors.onSurfaceVariant,
                           ),
                         ),
-                        if (progress case final progress?)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 4,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
                       ],
                     ),
                   ),

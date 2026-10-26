@@ -14,6 +14,7 @@ import '../../models.dart';
 import '../../playback_preferences.dart';
 import '../../playback_session.dart';
 import '../app_scope.dart';
+import '../downloads/download_actions.dart';
 import '../theme/app_theme.dart';
 import 'danmaku_overlay.dart';
 import '../widgets/status_view.dart';
@@ -357,10 +358,12 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
       widget.store.canDownload;
 
   void _download() {
+    final detail = _session.detail;
+    final episodes = [
+      for (final index in _selected.toList()..sort()) detail.episodes[index],
+    ];
     _select(false);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('下载正在重建，暂时不能下载')));
+    unawaited(downloadEpisodes(context, widget.store, detail, episodes));
   }
 
   @override

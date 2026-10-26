@@ -7,10 +7,10 @@ import '../../drama_details.dart';
 import '../../local_store.dart';
 import '../../models.dart';
 import '../app_scope.dart';
+import '../downloads/download_picker_page.dart';
 import '../player/playback_handle.dart';
 import '../player/playback_page.dart';
 import '../shell/app_shell.dart';
-import '../shell/pending_pages.dart';
 import '../widgets/cover_backdrop.dart';
 import '../widgets/cover_image.dart';
 import '../widgets/focus_ring.dart';
@@ -338,7 +338,7 @@ class _DetailPageState extends State<DetailPage> {
 
   void _download() => openPage<void>(
     context,
-    (_) => const PendingPage(title: '下载选集', icon: Icons.download_rounded),
+    (_) => DownloadPickerPage(store: widget.store, detail: _detail),
   );
 
   void _locate(int index) {

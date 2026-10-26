@@ -11,6 +11,7 @@ import '../../local_store.dart';
 import '../../models.dart';
 import '../../playback_session.dart';
 import '../app_scope.dart';
+import '../downloads/download_actions.dart';
 import '../theme/app_theme.dart';
 import '../widgets/follow_button.dart';
 import 'danmaku_overlay.dart';
@@ -236,9 +237,11 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
       canDownload:
           AppScope.of(context).repository.supportsDownloads &&
           widget.store.canDownload,
-      onDownload: () => ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('下载正在重建，暂时不能下载'))),
+      onDownload: (indexes) => unawaited(
+        downloadEpisodes(context, widget.store, _session.detail, [
+          for (final index in indexes) _session.detail.episodes[index],
+        ]),
+      ),
     ),
   );
 
@@ -783,7 +786,7 @@ class _EpisodeSheet extends StatefulWidget {
   });
   final PlaybackSession session;
   final bool canDownload;
-  final VoidCallback onDownload;
+  final ValueChanged<List<int>> onDownload;
 
   @override
   State<_EpisodeSheet> createState() => _EpisodeSheetState();
@@ -841,8 +844,9 @@ class _EpisodeSheetState extends State<_EpisodeSheet> {
                       onPressed: _selected.isEmpty
                           ? null
                           : () {
+                              final indexes = _selected.toList()..sort();
                               Navigator.pop(context);
-                              widget.onDownload();
+                              widget.onDownload(indexes);
                             },
                       child: const Text('下载'),
                     ),

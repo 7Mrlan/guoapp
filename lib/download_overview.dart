@@ -24,6 +24,7 @@ class DownloadOverview extends ChangeNotifier {
   List<DownloadJob> _jobs = const [];
 
   bool get available => store.canDownload && repository.supportsDownloads;
+  List<DownloadJob> get jobs => _jobs;
   int get active => _jobs.where((job) => job.active).length;
   int get completed => _jobs.where((job) => job.completed).length;
   int get completedBytes => _jobs
@@ -61,7 +62,8 @@ class DownloadOverview extends ChangeNotifier {
 
   static String _signature(List<DownloadJob> jobs) => [
     for (final job in jobs)
-      '${job.id}|${job.state}|${job.progress}|${job.bytes}|${job.drama.title}',
+      '${job.id}|${job.state}|${job.progress}|${job.bytes}|${job.total}|'
+          '${job.actualQuality}|${job.error}|${job.drama.title}',
   ].join('\n');
 
   void _replace(List<DownloadJob> jobs) {

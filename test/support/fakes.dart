@@ -70,6 +70,7 @@ DownloadJob downloadJob(
   String state = 'completed',
   double progress = 1,
   int bytes = 0,
+  int created = 0,
 }) => DownloadJob(
   id: '${drama.id}:$episode',
   drama: drama,
@@ -77,6 +78,7 @@ DownloadJob downloadJob(
   state: state,
   progress: progress,
   bytes: bytes,
+  created: created,
 );
 
 DramaDetail dramaDetail(
@@ -135,6 +137,30 @@ class FakeRepository extends AppRepository {
   Future<List<DownloadJob>> downloads() async {
     downloadRequests++;
     return jobs ?? const [];
+  }
+
+  final enqueued = <({String drama, List<int> episodes, int quality})>[];
+  final controls = <String>[];
+  final failingControls = <String>{};
+
+  @override
+  Future<int> enqueueDownloads(
+    DramaDetail detail,
+    List<Episode> episodes, {
+    int quality = 0,
+  }) async {
+    enqueued.add((
+      drama: detail.drama.id,
+      episodes: [for (final episode in episodes) episode.number],
+      quality: quality,
+    ));
+    return episodes.length;
+  }
+
+  @override
+  Future<void> controlDownloads(String command, {String id = ''}) async {
+    if (failingControls.contains(id)) throw AppFailure('无法处理 $id');
+    controls.add('$command|$id');
   }
 
   CatalogPage pageFor(String source, String category, String query, int page) =>
