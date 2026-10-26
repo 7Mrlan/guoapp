@@ -217,7 +217,12 @@ class ExplorePageState extends State<ExplorePage> {
               ),
             ),
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(inset, 8, inset, 16),
+              padding: EdgeInsets.fromLTRB(
+                inset,
+                8,
+                inset,
+                television ? 27 : 16,
+              ),
               sliver: SliverToBoxAdapter(child: FeedFooter(feed: feed)),
             ),
           ],

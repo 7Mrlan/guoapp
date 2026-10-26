@@ -177,7 +177,7 @@ class _AppShellState extends State<AppShell> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
                       televisionInset,
-                      24,
+                      27,
                       televisionInset,
                       8,
                     ),

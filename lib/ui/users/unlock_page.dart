@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../local_store.dart';
+import '../app_scope.dart';
 import '../settings/backup_actions.dart';
 import '../settings/settings_rows.dart';
 import '../widgets/focus_ring.dart';
@@ -43,7 +44,12 @@ class _UnlockPageState extends State<UnlockPage> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 48),
+            padding: AppScope.of(context).television
+                ? const EdgeInsets.symmetric(
+                    horizontal: televisionInset,
+                    vertical: 27,
+                  )
+                : const EdgeInsets.symmetric(horizontal: 16, vertical: 48),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
               child: Column(
@@ -57,7 +63,7 @@ class _UnlockPageState extends State<UnlockPage> {
                   ),
                   _Heading(
                     title: error == null ? '选择用户' : '需要恢复本地配置',
-                    message: error ?? '有密码的用户需要验证后进入',
+                    message: error,
                   ),
                   if (error == null)
                     SettingsCard(
@@ -128,9 +134,9 @@ final _buttonStyle = ButtonStyle(
 );
 
 class _Heading extends StatelessWidget {
-  const _Heading({required this.title, required this.message});
+  const _Heading({required this.title, this.message});
   final String title;
-  final String message;
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -149,14 +155,15 @@ class _Heading extends StatelessWidget {
             ),
           ),
         ),
-        Text(
-          message,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            height: 1.6,
+        if (message case final message?)
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.6,
+            ),
           ),
-        ),
       ],
     );
   }

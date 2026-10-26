@@ -499,7 +499,11 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
               ),
             ],
-          const SliverPadding(padding: EdgeInsets.only(bottom: 32)),
+          SliverPadding(
+            padding: EdgeInsets.only(
+              bottom: AppScope.of(context).television ? 27 : 32,
+            ),
+          ),
         ],
       );
     },
