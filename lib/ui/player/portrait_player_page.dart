@@ -23,7 +23,6 @@ const _maskHeight = 68.0;
 String _status(Drama drama) =>
     drama.releaseLabel == '状态未知' ? '' : '${drama.releaseLabel} · ';
 
-/// 手机竖屏沉浸播放：上下翻页切集，长按出播放设置，左侧长按 2 倍速。
 class PortraitPlayerPage extends StatefulWidget {
   const PortraitPlayerPage({
     super.key,
@@ -115,7 +114,6 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
 
   void _changed() {
     _bind();
-    // 按住 2 倍速时自动连播换了集，原来那页的手势随页面消失，当作松手处理。
     if (_holding && _session.index != _heldIndex) _pressEnd();
     if (!_scrolling &&
         _pages.hasClients &&
@@ -171,7 +169,6 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
     return false;
   }
 
-  /// 鼠标滚轮滚一格翻一页；翻页动画进行中的多余滚动忽略。
   void _wheel(PointerSignalEvent event) {
     if (event is! PointerScrollEvent || event.scrollDelta.dy == 0) return;
     GestureBinding.instance.pointerSignalResolver.register(event, (_) {
@@ -295,7 +292,6 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
         : index == session.standbyIndex
         ? session.standby
         : null;
-    // 加载中先不显示画面，免得露出上一集停住的最后一帧。
     final waiting = player == null || current && session.loading;
     return Listener(
       onPointerSignal: _wheel,
@@ -396,7 +392,6 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
           ),
         if (session.error case final error?)
           PlaybackFailure(session: session, error: error),
-        // 前面有按状态出现的层，常驻控件用 key 固定，否则拖动进度条时会被重建、拖不动。
         Positioned(
           key: const ValueKey('header'),
           left: 4,
@@ -740,7 +735,6 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
   );
 }
 
-/// 比默认弹簧硬一些，翻页更利落；到第一集或最后一集时仍回弹。
 class _PagePhysics extends BouncingScrollPhysics {
   const _PagePhysics({super.parent});
 

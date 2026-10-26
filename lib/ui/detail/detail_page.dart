@@ -268,7 +268,6 @@ class _DetailPageState extends State<DetailPage> {
     autoplay: autoplay,
   );
 
-  /// 详情一加载完就暂停打开续播那一集：点播放即开，也提前知道视频横竖。
   void _preopen() {
     final details = _details!;
     if (_handle != null ||

@@ -23,9 +23,6 @@ import 'player_surface.dart';
 
 enum _Panel { episodes, settings, speed, quality }
 
-/// 手机播放横屏视频：竖着拿时视频在上、简介和选集两个 Tab 在下（竖持）；手机转横后全屏。
-/// 轻点画面显示播控，3 秒无操作隐藏；双击暂停 / 播放，全屏和平板竖持时双击左右四分之一快退 / 快进 10 秒，
-/// 每再双击一次多 10 秒，停手后一次跳到位；长按 2 倍速。
 class LandscapePlayerPage extends StatefulWidget {
   const LandscapePlayerPage({
     super.key,
@@ -184,7 +181,6 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     _seekValue = null;
   }
 
-  /// 暂停、加载、出错、拖进度条或开着面板时播控一直显示。
   bool get _pinned =>
       _session.paused || !_session.ready || _dragging || _panel != null;
 
@@ -235,8 +231,6 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     _tapTimer = Timer(const Duration(milliseconds: 300), _toggleControls);
   }
 
-  /// 双击一侧记 10 秒，之后每再双击一次（同一侧轻点两下）多记 10 秒。
-  /// 停手 0.7 秒后从当时的位置一次跳到位。
   void _startStreak(int side) {
     final duration = _session.player.state.duration;
     if (!_session.ready || duration <= Duration.zero) return;
@@ -505,7 +499,6 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     );
   }
 
-  // 竖持的迷你播控：左上返回，右上小窗、设置；进度条下面一行左边播放、时间，右边弹幕、全屏。
   Widget _miniControls(BuildContext context) {
     final session = _session;
     return Stack(
@@ -541,7 +534,6 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
             ],
           ),
         ),
-        // 底栏：进度条在上，按钮行在下。
         Positioned(
           left: 4,
           right: 4,
@@ -549,8 +541,6 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 看起来是按钮行上方 6 高的一条，拖动区域保留 20 高：下移 7 压住按钮行顶边，
-              // 进度条中线离视频底边 51；重叠处按钮优先。
               Transform.translate(
                 offset: const Offset(0, 7),
                 child: Padding(
@@ -586,8 +576,6 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     );
   }
 
-  // 全屏播控：左上返回、剧名和集数，右上电量、时间、弹幕、小窗、设置；
-  // 进度条下面一行左边播放、时间、上下集，右边选集、清晰度、倍速、退出全屏。
   Widget _fullControls(BuildContext context) {
     final session = _session;
     final padding = MediaQuery.viewPaddingOf(context);
@@ -1052,7 +1040,6 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
               ],
             ),
             Expanded(
-              // 播放设置的内容等设置页的「播放」组做完再定；倍速、清晰度、弹幕已在播控上。
               child: episodes
                   ? EpisodeGrid(
                       episodes: session.detail.episodes,
@@ -1079,7 +1066,6 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     );
   }
 
-  // 清晰度、倍速的小菜单，样式同电脑端。
   Widget _popup(BuildContext context, _Panel panel) {
     final session = _session;
     return Material(
@@ -1145,7 +1131,6 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     );
   }
 
-  // 竖持时视频下方：「简介 / 选集」Tab 栏托住视频，下面是当前 Tab 的内容。
   Widget _details(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return SafeArea(
@@ -1262,7 +1247,6 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     final status = drama.releaseLabel == '状态未知'
         ? ''
         : '${drama.releaseLabel} · ';
-    // 状态和下载这一行跟着集数一起滚动。
     final header = SizedBox(
       height: 48,
       child: Padding(

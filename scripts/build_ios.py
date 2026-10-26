@@ -127,7 +127,6 @@ def main():
         for symbol in ['_DuanjuRequest', '_DuanjuFree']:
             if symbol not in symbols:
                 raise SystemExit('iOS 包缺少 FFI 入口：' + symbol)
-        # IPA 结构为 zip 内 Payload/Runner.app，便于用户用 AltStore / Sideloadly / TrollStore 自签后直接安装。
         payload = output / 'Payload'
         if payload.exists():
             shutil.rmtree(payload)

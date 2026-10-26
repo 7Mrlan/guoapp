@@ -170,7 +170,6 @@ class PlaybackSession extends ChangeNotifier {
 
   Player get player => _player;
 
-  /// 已在备用播放器里打开、停在首帧的那一集；没有时为 null。
   Player? get standby => _standbyOpen ? _standby : null;
   int get standbyIndex => _standbyOpen ? _standbyIndex : -1;
   int get index => _index;
@@ -182,11 +181,8 @@ class PlaybackSession extends ChangeNotifier {
   String? get saveWarning => _saveWarning;
   bool get ready => !_loading && _error == null;
 
-  /// 缓冲持续超过半秒才算卡住。mpv 跳转后从关键帧解码时也会短暂报「缓冲」，
-  /// 那时数据已在缓存里，不该闪加载图标。
   bool get stalled => _stalled;
 
-  /// 用户主动暂停（或播完停住）；不随播放器开播前的瞬间状态闪烁。
   bool get paused => !_playIntent;
   bool get boosting => _boosting;
   bool get boostLocked => _boostLocked;
@@ -301,7 +297,6 @@ class PlaybackSession extends ChangeNotifier {
     final position = state.position.inMilliseconds;
     final ahead = state.buffer.inMilliseconds - position;
     if (_standby != null) {
-      // 有备用播放器时尽早预开下一集，暂停或缓冲时也不中断。
       if (_standbyOpen &&
           DateTime.now().difference(_standbyAt) > const Duration(minutes: 8)) {
         _dropStandby();
@@ -595,15 +590,12 @@ class PlaybackSession extends ChangeNotifier {
     }
   }
 
-  /// 换到已在备用播放器里打开的那一集：当场换过去开播，旧播放器停下来改作备用。
-  /// 交换必须同步完成，否则翻页结束时会先露出上一集的画面。
   Future<void> _swap(int index, bool playWhenReady) async {
     final plan = _standbyPlan!;
     final next = _standby!;
     final previous = _player;
     final previousPlan = _plan;
     final volume = previous.state.volume;
-    // 先记下正在离开的这一集；saveProgress 在第一次等待前就读完了进度。
     unawaited(saveProgress());
     _preloader.clear();
     final ticket = ++_generation;
@@ -696,7 +688,6 @@ class PlaybackSession extends ChangeNotifier {
     if (plan != null) unawaited(_release(plan.session));
   }
 
-  /// 暂停预开时只缓冲开头一小段，正式播放后恢复正常缓冲。
   Future<void> _limitCache(Player target, bool limited) async {
     final platform = target.platform;
     if (platform is! NativePlayer) return;
@@ -706,7 +697,6 @@ class PlaybackSession extends ChangeNotifier {
     );
   }
 
-  /// 从详情页暂停预开的状态开始播放；集数或起点不同时改为从头加载。
   void start(int index, {double position = 0}) {
     if (!_usable) return;
     final wasEngaged = _engaged;
@@ -813,7 +803,6 @@ class PlaybackSession extends ChangeNotifier {
     });
   }
 
-  /// 按住立即 2 倍速（竖屏左侧长按）。
   void holdBoost() {
     if (!_usable || _boosting) return;
     _boostTimer?.cancel();
@@ -823,7 +812,6 @@ class PlaybackSession extends ChangeNotifier {
     _notify();
   }
 
-  /// 锁定后暂停、切集都保持 2 倍速，只有解除锁定或退出播放才恢复。
   void setBoostLocked(bool locked) {
     if (_boostLocked == locked) return;
     if (locked) {

@@ -80,7 +80,6 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
     _bind();
   }
 
-  /// 自动连播换到备用播放器后，改听新播放器的进度。
   void _bind() {
     final player = _session.player;
     if (identical(player, _bound)) return;

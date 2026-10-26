@@ -13,8 +13,6 @@ Player _player() => Player(
   ),
 );
 
-/// 手机播放用的一对播放器：一个正在播，另一个预开下一集。
-/// 详情页先以暂停状态打开续播那一集，点播放时整份交给播放页。
 class PlaybackHandle {
   PlaybackHandle({
     required AppRepository repository,

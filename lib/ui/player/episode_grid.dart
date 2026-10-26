@@ -12,10 +12,6 @@ const _cellGap = 8.0;
 const _rowExtent = _cellHeight + _cellGap;
 const _listTop = 14.0;
 
-/// 播放页的选集：全部集数连续排列，打开或换集时滚到当前集。
-/// 多选时按住滑过连选，拖到上下边缘自动滚动。宽屏按下即勾选；
-/// 触屏轻点勾选，先横向滑动才开始连选，竖向滑动照常滚动列表。
-/// [header] 排在集数上方，和集数一起滚动。
 class EpisodeGrid extends StatefulWidget {
   const EpisodeGrid({
     super.key,

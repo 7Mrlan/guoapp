@@ -188,7 +188,6 @@ func TestNativeCatalogCacheFreshnessPagingAndRefresh(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		// 「全部」会并发请求每个 AI 分类，只让 ai-duanju 返回数据并计数。
 		if r.URL.Path != "/api/videos/category/ai-duanju" {
 			json.NewEncoder(w).Encode(map[string]any{"data": []any{}})
 			return

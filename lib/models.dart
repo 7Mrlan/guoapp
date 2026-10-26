@@ -38,10 +38,8 @@ class SourceSite {
     '韩剧 · 韩国电影 · 综艺动漫',
   );
 
-  /// 默认开启的站源：红果、韩小圈、鬼片网、青空次元。
   static const primaryValues = [hongguo, hanxiaoquan, guipian, sorani];
 
-  /// 敏感站源：默认关闭，可在站源管理中开启。
   static const restrictedValues = [
     SourceSite('huangdou', '黄豆', '精选短剧'),
     SourceSite('huangju', '剧果', '热门 · 最新 · 分类短剧'),

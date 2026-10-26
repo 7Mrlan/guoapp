@@ -99,7 +99,6 @@ void _close(PlaybackSession session) {
 
 Duration _seconds(num value) => Duration(milliseconds: (value * 1000).round());
 
-/// 播到第 5 秒、已缓冲 20 秒，等预加载的 600 毫秒延迟过去。
 Future<void> _settle(FakePlayer player) async {
   player.state = player.state.copyWith(buffer: _seconds(25));
   player.progress(_seconds(5), duration: _seconds(100));

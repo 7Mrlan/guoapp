@@ -4,7 +4,6 @@ import '../../playback_preferences.dart';
 import '../../playback_session.dart';
 import '../theme/app_theme.dart';
 
-/// 播放器里的面板和上拉栏固定用深色主题。
 ThemeData playerTheme(BuildContext context) {
   final theme = Theme.of(context);
   return theme.brightness == Brightness.dark
@@ -16,7 +15,6 @@ ThemeData playerTheme(BuildContext context) {
         );
 }
 
-/// 约占屏幕 60% 高。[dark] 为 false 时跟随界面的浅色 / 深色。
 Future<void> showPlayerSheet(
   BuildContext context,
   WidgetBuilder builder, {
@@ -30,7 +28,6 @@ Future<void> showPlayerSheet(
     showDragHandle: true,
     backgroundColor: theme.colorScheme.surfaceContainerLow,
     constraints: BoxConstraints.tightFor(height: height),
-    // 上拉栏的 Material 按页面外的主题给文字定色，可能和上拉栏的主题不一致，这里改回所用主题的前景色。
     builder: (context) => Theme(
       data: theme,
       child: DefaultTextStyle.merge(

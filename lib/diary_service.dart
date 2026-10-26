@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
-/// 应用内「日记」日志服务 — 实时记录播放与系统事件，方便在电视与手机端快速排查问题。
 class DiaryService {
   static final List<String> _entries = <String>[];
   static const int maxEntries = 500;
@@ -12,7 +11,6 @@ class DiaryService {
   static int _clears = 0;
   static final ValueNotifier<int> revision = ValueNotifier<int>(0);
 
-  /// 记录一条日记
   static void add(String message) {
     final entry = '[${_clock(DateTime.now())}] $message';
     _entries.add(entry);
@@ -23,13 +21,11 @@ class DiaryService {
     debugPrint('[Diary] $message');
   }
 
-  /// 获取当前所有日记副本
   static List<String> get entries => List<String>.unmodifiable([
     ..._entries,
     if (_nativeText.isNotEmpty) ..._nativeText.split('\n'),
   ]);
 
-  /// 清空日记
   static Future<void> clear() async {
     _entries.clear();
     _nativeText = '';
@@ -46,7 +42,6 @@ class DiaryService {
     }
   }
 
-  /// 获取合并后的完整日志文本
   static String get fullText => [_entries.join('\n'), _nativeText].join('\n');
 
   static Future<void> refreshNativeLogs() async {

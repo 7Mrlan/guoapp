@@ -17,7 +17,6 @@ import 'theme_color.dart';
 part 'local_store_sync.dart';
 
 class LocalStore extends ChangeNotifier {
-  /// [pinHasher] 可注入，便于测试替换掉默认的 isolate 哈希实现。
   LocalStore(
     this.preferences, {
     Future<String> Function(String, String)? pinHasher,

@@ -57,7 +57,6 @@ func reopenCatalogEngine(t *testing.T, directory string, transport sourceFixture
 	return engine
 }
 
-// catalogFixtureEngine 每次目录请求只翻一页，便于逐页检查游标。
 func catalogFixtureEngine(t *testing.T, transport sourceFixtureTransport) *nativeEngine {
 	t.Helper()
 	engine := sourceFixtureEngine(t, transport)

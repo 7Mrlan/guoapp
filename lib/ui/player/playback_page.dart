@@ -14,7 +14,6 @@ import 'playback_handle.dart';
 import 'player_page.dart';
 import 'portrait_player_page.dart';
 
-/// 播放页外壳：持有播放器，按当前宽度和视频宽高选用版式，改变窗口大小时不中断播放。
 class PlaybackPage extends StatefulWidget {
   const PlaybackPage({super.key, required this.store, required this.handle});
   final LocalStore store;
@@ -75,9 +74,6 @@ class _PlaybackPageState extends State<PlaybackPage> {
     );
   }
 
-  // 电视的播放版式还没做，先用竖屏页。按最短边区分手机和平板：手机转成横屏也仍是手机；
-  // 平板横持用宽屏版式、竖持用手机的页面，全屏只由按钮进出，全屏期间锁定横屏。
-  // Windows 界面模式为「平板」时也用平板版式，按窗口宽高分横持 / 竖持，全屏为窗口全屏。
   @override
   Widget build(BuildContext context) {
     if (defaultTargetPlatform == TargetPlatform.windows) {

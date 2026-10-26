@@ -136,7 +136,7 @@ func TestRankingCacheAndStaleRecovery(t *testing.T) {
 		}
 		page, err := strconv.Atoi(request.URL.Query().Get("page"))
 		if err != nil {
-			page = 1 // 第一页不带 page 参数
+			page = 1
 		}
 		return rankingHTTPResponse(request, 200, rankingFixture(board, page, rankingRows(page))), nil
 	})

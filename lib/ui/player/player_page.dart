@@ -17,7 +17,6 @@ import 'player_surface.dart';
 
 const _panelWidth = 360.0;
 
-/// 宽屏播放页：左边视频、右边选集。窗口窄到手机宽度时换成竖屏播放页。
 class PlayerPage extends StatefulWidget {
   const PlayerPage({
     super.key,
