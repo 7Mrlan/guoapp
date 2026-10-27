@@ -80,16 +80,16 @@ void main() {
 
   test('search pages only where the source searches by page', () async {
     final repository = _TopicRepository();
+    final huangdou = await SourceCatalog(
+      repository,
+      const SourceSite('huangdou', '黄豆', '精选短剧'),
+    ).search('剧名');
     final hongguo = await SourceCatalog(
       repository,
       SourceSite.hongguo,
-    ).search('剧名');
-    final sorani = await SourceCatalog(
-      repository,
-      SourceSite.sorani,
     ).search('剧名', page: 2);
-    expect(hongguo.hasMore, isFalse);
-    expect(sorani.hasMore, isTrue);
-    expect(repository.catalogRequests, ['hongguo||剧名|1', 'sorani||剧名|2']);
+    expect(huangdou.hasMore, isFalse);
+    expect(hongguo.hasMore, isTrue);
+    expect(repository.catalogRequests, ['huangdou||剧名|1', 'hongguo||剧名|2']);
   });
 }

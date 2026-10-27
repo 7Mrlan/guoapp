@@ -7,8 +7,9 @@ class SourceSite {
   final String id;
   final String name;
   final String description;
-  bool get onlineSearch => id == 'hongguo' || pagedSearch;
+  bool get onlineSearch => pagedSearch;
   bool get pagedSearch =>
+      id == 'hongguo' ||
       id == 'huangju' ||
       id == 'yeguo' ||
       id == 'dsd' ||
