@@ -89,25 +89,21 @@ func TestMigrationFailureLeavesSourceAndExistingTargetIntact(t *testing.T) {
 	}
 }
 
-func TestMediaLeasePreventsMigrationAndDeletingSourceFiles(t *testing.T) {
-	engine, id := storageFixture(t)
-	if _, err := engine.workLease("media", "start"); err != nil {
-		t.Fatal(err)
+func TestStorageLeaseRejectsParallelAndRetiredTasks(t *testing.T) {
+	engine, _ := storageFixture(t)
+	if count, err := engine.workLease("storage", "start"); err != nil || count != 1 {
+		t.Fatalf("start: %d %v", count, err)
 	}
-	if _, err := engine.workLease("media", "start"); err == nil {
-		t.Fatal("parallel media operations accepted")
+	if _, err := engine.workLease("storage", "start"); err == nil {
+		t.Fatal("parallel storage operations accepted")
 	}
-	if err := engine.moveDownloads(context.Background(), t.TempDir()); err == nil {
-		t.Fatal("moving busy media")
+	for _, retired := range []string{"media", "mergeQueue", "mergeCleanup"} {
+		if _, err := engine.workLease(retired, "start"); err == nil {
+			t.Fatalf("retired task accepted: %s", retired)
+		}
 	}
-	if err := engine.downloads.control(id, "remove"); err == nil {
-		t.Fatal("deleting active input")
-	}
-	if _, err := engine.workLease("media", "end"); err != nil {
-		t.Fatal(err)
-	}
-	if err := engine.downloads.control(id, "remove"); err != nil {
-		t.Fatal(err)
+	if count, err := engine.workLease("storage", "end"); err != nil || count != 0 {
+		t.Fatalf("end: %d %v", count, err)
 	}
 }
 

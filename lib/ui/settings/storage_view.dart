@@ -85,7 +85,7 @@ class _StorageViewState extends State<StorageView> {
       builder: (context) => AlertDialog(
         title: const Text('迁移已下载内容？'),
         content: Text(
-          '将视频、合并成品及导出内容迁移到：\n$parent\n\n下载会先暂停，复制成功后清理旧目录。请保证目标有足够空间，并在完成后继续下载。',
+          '将下载目录里的全部内容迁移到：\n$parent\n\n下载会先暂停，复制成功后清理旧目录。请保证目标有足够空间，并在完成后继续下载。',
         ),
         actions: [
           TextButton(
@@ -102,7 +102,7 @@ class _StorageViewState extends State<StorageView> {
     );
     if (confirmed != true || !mounted) return;
     final repository = AppScope.of(context).repository;
-    final navigator = Navigator.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
     showDialog<void>(
       context: context,
       barrierDismissible: false,

@@ -99,7 +99,7 @@ flutter run
 
 调试全站源版：先给 `build_native.py` 加 `--all-sources`，再 `flutter run --dart-define=ALL_SOURCES=true`；iOS 对应 `build_ios.py --core-only --all-sources`。脚本会同步设置 Dart 常量和 Go 编译参数，应用启动时校验二者一致，避免混装原生库。
 
-播放器使用 [media_kit](https://github.com/media-kit/media-kit) / libmpv，合并使用 [FFmpegKit min-gpl](https://github.com/sk3llo/ffmpeg_kit_flutter)（含 GPL 媒体组件）。FFmpegKit 不参与正常播放或下载的转码。
+播放器使用 [media_kit](https://github.com/media-kit/media-kit) / libmpv，下载完成后转成单个 mp4 使用 [FFmpegKit min-gpl](https://github.com/sk3llo/ffmpeg_kit_flutter)（含 GPL 媒体组件），只换封装、不重新编码。FFmpegKit 不参与正常播放。
 
 ### 集中检查
 

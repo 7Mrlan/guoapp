@@ -62,7 +62,6 @@ type nativeDownloads struct {
 	converting  map[string]bool
 	closed      bool
 	moving      bool
-	mediaBusy   bool
 	loadErr     error
 	workers     sync.WaitGroup
 	lastSaved   time.Time
@@ -74,14 +73,6 @@ type nativeDownloads struct {
 func nativeDownloadID(drama string, episode int) string {
 	hash := sha256.Sum256([]byte(drama + "\x00" + strconv.Itoa(episode)))
 	return hex.EncodeToString(hash[:16])
-}
-
-func nativeDownloadVersion(job nativeDownloadJob) string {
-	version := fmt.Sprintf("%d-%d-%d", job.Created, job.Bytes, job.ActualQuality)
-	if job.Revision > 0 {
-		version += "-" + strconv.FormatInt(job.Revision, 10)
-	}
-	return version
 }
 
 func (manager *nativeDownloads) unarchivedCountLocked() int {
@@ -327,10 +318,6 @@ func (manager *nativeDownloads) enqueueContext(ctx context.Context, input native
 }
 
 func (manager *nativeDownloads) control(id, action string) error {
-	return manager.controlExpected(id, action, "")
-}
-
-func (manager *nativeDownloads) controlExpected(id, action, version string) error {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 	if manager.loadErr != nil {
@@ -338,18 +325,6 @@ func (manager *nativeDownloads) controlExpected(id, action, version string) erro
 	}
 	if manager.closed || manager.moving {
 		return errors.New("下载目录正在迁移或队列已关闭，请稍后重试")
-	}
-	if action == "remove" && manager.mediaBusy {
-		return errors.New("请等待合并或导出完成后再删除分集")
-	}
-	if version != "" {
-		job := manager.jobs[id]
-		if job == nil {
-			return nil
-		}
-		if action != "remove" || job.State != "completed" || nativeDownloadVersion(job.nativeDownloadJob) != version {
-			return errors.New("原分集已改变，已保留文件")
-		}
 	}
 	previous := map[string]nativeDownloadRecord{}
 	cancelIDs := []string{}

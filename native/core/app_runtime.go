@@ -94,30 +94,29 @@ type nativeDrama struct {
 }
 
 type nativeInput struct {
-	ExpectedVersions map[string]string       `json:"expectedVersions"`
-	SystemProxy      nativeSystemProxy       `json:"systemProxy"`
-	Settings         nativeResourceSettings  `json:"settings"`
-	JobIDs           []string                `json:"jobIds"`
-	PlaybackSession  string                  `json:"playbackSession"`
-	StartMS          int64                   `json:"startMs"`
-	DurationMS       int64                   `json:"durationMs"`
-	Board            string                  `json:"board"`
-	Entries          []nativeDownloadEpisode `json:"entries"`
-	JobID            string                  `json:"jobId"`
-	Command          string                  `json:"command"`
-	Action           string                  `json:"action"`
-	Directory        string                  `json:"directory"`
-	Source           string                  `json:"source"`
-	Page             int                     `json:"page"`
-	Query            string                  `json:"query"`
-	Category         string                  `json:"category"`
-	Drama            nativeDrama             `json:"drama"`
-	Chapter          Chapter                 `json:"chapter"`
-	Index            int                     `json:"index"`
-	Quality          int                     `json:"quality"`
-	Session          string                  `json:"session"`
-	Sequence         int64                   `json:"sequence"`
-	Force            bool                    `json:"force"`
+	SystemProxy     nativeSystemProxy       `json:"systemProxy"`
+	Settings        nativeResourceSettings  `json:"settings"`
+	JobIDs          []string                `json:"jobIds"`
+	PlaybackSession string                  `json:"playbackSession"`
+	StartMS         int64                   `json:"startMs"`
+	DurationMS      int64                   `json:"durationMs"`
+	Board           string                  `json:"board"`
+	Entries         []nativeDownloadEpisode `json:"entries"`
+	JobID           string                  `json:"jobId"`
+	Command         string                  `json:"command"`
+	Action          string                  `json:"action"`
+	Directory       string                  `json:"directory"`
+	Source          string                  `json:"source"`
+	Page            int                     `json:"page"`
+	Query           string                  `json:"query"`
+	Category        string                  `json:"category"`
+	Drama           nativeDrama             `json:"drama"`
+	Chapter         Chapter                 `json:"chapter"`
+	Index           int                     `json:"index"`
+	Quality         int                     `json:"quality"`
+	Session         string                  `json:"session"`
+	Sequence        int64                   `json:"sequence"`
+	Force           bool                    `json:"force"`
 }
 
 type nativeCatalogResult struct {
@@ -359,7 +358,7 @@ func nativeDispatch(input nativeInput) (any, error) {
 	case "saveResourceSettings":
 		return engine.saveResourceSettings(input.Settings)
 	case "controlDownloadBatch":
-		return engine.downloads.controlBatchExpected(ctx, input.JobIDs, input.Command, input.ExpectedVersions)
+		return engine.downloads.controlBatch(ctx, input.JobIDs, input.Command)
 	case "preload":
 		return engine.nativePreload(ctx, input)
 	case "danmaku":

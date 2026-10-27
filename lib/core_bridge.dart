@@ -126,10 +126,8 @@ abstract class AppRepository {
   Future<void> finishConversion(String id, String result) async {}
   Future<DownloadBatchResult> controlDownloadBatch(
     String command,
-    List<String> ids, {
-    Map<String, String> expectedVersions = const {},
-  }) async {
-    if (expectedVersions.isNotEmpty) throw AppFailure('当前环境不支持校验后清理原分集');
+    List<String> ids,
+  ) async {
     final completed = <String>[], failures = <String, String>{};
     for (final id in ids.toSet()) {
       try {
@@ -759,9 +757,8 @@ class NativeRepository extends AppRepository {
   @override
   Future<DownloadBatchResult> controlDownloadBatch(
     String command,
-    List<String> ids, {
-    Map<String, String> expectedVersions = const {},
-  }) async {
+    List<String> ids,
+  ) async {
     _downloadPermission();
     final epoch = access?.profileEpoch;
     if (ids.isEmpty || ids.length > 500) throw AppFailure('每批请选择 1 至 500 个任务');
@@ -776,7 +773,6 @@ class NativeRepository extends AppRepository {
         'action': 'controlDownloadBatch',
         'command': command,
         'jobIds': ids,
-        if (expectedVersions.isNotEmpty) 'expectedVersions': expectedVersions,
       }),
     );
   }

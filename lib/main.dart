@@ -11,7 +11,6 @@ import 'app_device.dart';
 import 'core_bridge.dart';
 import 'diary_service.dart';
 import 'local_store.dart';
-import 'media_library.dart';
 import 'ui/app.dart';
 import 'ui/theme/app_theme.dart';
 
@@ -60,8 +59,6 @@ class _AppBootstrapState extends State<AppBootstrap>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    MediaLibrary.current?.dispose();
-    MediaLibrary.current = null;
     store?.dispose();
     super.dispose();
   }
@@ -72,20 +69,13 @@ class _AppBootstrapState extends State<AppBootstrap>
       unawaited(_refreshDevice());
     }
     if (!Platform.isIOS) return;
-    final library = MediaLibrary.current;
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
-      if (library != null) {
-        library.suspended = true;
-        unawaited(library.cancel());
-      }
       unawaited(
         NativeRepository(
           background: true,
         ).controlDownloads('pauseAll').catchError((Object _) {}),
       );
-    } else if (state == AppLifecycleState.resumed) {
-      if (library != null) library.suspended = false;
     }
   }
 
@@ -109,7 +99,6 @@ class _AppBootstrapState extends State<AppBootstrap>
       setState(() {
         final local = store = LocalStore(preferences);
         repository.access = local;
-        MediaLibrary.attach(repository, local);
       });
     } catch (failure) {
       if (mounted) setState(() => error = failure);
