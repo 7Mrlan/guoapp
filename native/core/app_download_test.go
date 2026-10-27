@@ -385,6 +385,40 @@ func TestNativeDownloadsBoundedQueueCancelAndPlaybackIsolation(t *testing.T) {
 	}
 }
 
+func TestNativeDownloadsPauseSourceOnlyPausesThatSource(t *testing.T) {
+	manager := downloadTestManager(t)
+	manager.resolve = func(ctx context.Context, job nativeDownloadJob) (providerMedia, error) {
+		<-ctx.Done()
+		return providerMedia{}, ctx.Err()
+	}
+	if _, err := manager.enqueue(downloadTestInput(3)); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.control("huangdou", "pauseSource"); err != nil {
+		t.Fatal(err)
+	}
+	jobs, err := manager.snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, job := range jobs {
+		if job.State == "paused" {
+			t.Fatalf("paused another source: %+v", job)
+		}
+	}
+	if err := manager.control("hongguo", "pauseSource"); err != nil {
+		t.Fatal(err)
+	}
+	waitDownloads(t, manager, func(jobs []nativeDownloadJob) bool {
+		for _, job := range jobs {
+			if job.State != "paused" {
+				return false
+			}
+		}
+		return len(jobs) == 3
+	})
+}
+
 func TestNativeDownloadsRestartPausesPendingJobs(t *testing.T) {
 	manager := downloadTestManager(t)
 	manager.resolve = func(ctx context.Context, job nativeDownloadJob) (providerMedia, error) {

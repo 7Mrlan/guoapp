@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../local_store.dart';
 import '../../models.dart';
+import '../app_scope.dart';
 import '../widgets/focus_ring.dart';
 import 'settings_rows.dart';
 
@@ -14,6 +15,7 @@ class SourcesView extends StatelessWidget {
     listenable: store,
     builder: (context, _) {
       final admin = store.profile.admin;
+      final repository = AppScope.of(context).repository;
       return ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
@@ -28,16 +30,23 @@ class SourcesView extends StatelessWidget {
                   site: site,
                   enabled: store.sourceEnabled(site.id),
                   onChanged: admin
-                      ? (value) => saveSetting(
-                          context,
-                          () => store.setSourceEnabled(site.id, value),
-                        )
+                      ? (value) => saveSetting(context, () async {
+                          await store.setSourceEnabled(site.id, value);
+                          if (!value && repository.supportsDownloads) {
+                            await repository.controlDownloads(
+                              'pauseSource',
+                              id: site.id,
+                            );
+                          }
+                        })
                       : null,
                 ),
             ],
           ),
           const SizedBox(height: 12),
-          const _Note('关闭的站源不在发现、搜索、追剧和观看记录中显示，记录保留，重新开启后恢复。'),
+          const _Note(
+            '关闭的站源不在发现、搜索、追剧、观看记录和下载中显示，记录保留，重新开启后恢复。正在下载的集会暂停，重新开启后可在下载页继续。',
+          ),
         ],
       );
     },

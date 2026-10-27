@@ -330,12 +330,12 @@ func (manager *nativeDownloads) control(id, action string) error {
 	cancelIDs := []string{}
 	remember := func(job *nativeDownloadRecord) { previous[job.ID] = *job }
 	switch action {
-	case "pauseAll", "resumeAll":
+	case "pauseAll", "resumeAll", "pauseSource":
 		for _, job := range manager.jobs {
-			if !nativeDownloadAvailable(job.nativeDownloadJob) {
+			if !nativeDownloadAvailable(job.nativeDownloadJob) || action == "pauseSource" && job.Drama.Source != id {
 				continue
 			}
-			if action == "pauseAll" && (job.State == "queued" || job.State == "downloading") {
+			if action != "resumeAll" && (job.State == "queued" || job.State == "downloading") {
 				remember(job)
 				job.State = "paused"
 				cancelIDs = append(cancelIDs, job.ID)
