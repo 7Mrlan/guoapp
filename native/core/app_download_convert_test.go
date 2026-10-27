@@ -136,6 +136,9 @@ func TestNativeDownloadConversionFailureRetryAndRemoval(t *testing.T) {
 	if _, err := manager.beginConversion(id); err != nil {
 		t.Fatal(err)
 	}
+	if count, err := manager.engine.workLease("", ""); err != nil || count != 1 {
+		t.Fatalf("background service cannot see the running conversion: %d %v", count, err)
+	}
 	if _, err := manager.beginConversion(id); err == nil {
 		t.Fatal("same episode converted twice")
 	}
@@ -148,6 +151,9 @@ func TestNativeDownloadConversionFailureRetryAndRemoval(t *testing.T) {
 	jobs, _ := manager.snapshot()
 	if len(jobs) != 1 || jobs[0].State != "failed" || jobs[0].Error != "转换失败，点击重试" {
 		t.Fatalf("failure not recorded: %+v", jobs)
+	}
+	if count, _ := manager.engine.workLease("", ""); count != 0 {
+		t.Fatalf("finished conversion still keeps the service alive: %d", count)
 	}
 	if err := manager.control(id, "resume"); err != nil {
 		t.Fatal(err)

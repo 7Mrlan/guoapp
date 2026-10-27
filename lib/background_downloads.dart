@@ -92,13 +92,16 @@ class DownloadTaskHandler extends TaskHandler {
         _idle = 0;
       }
       final bytes = active.fold<int>(0, (total, job) => total + job.bytes);
+      final converting = jobs.where((job) => job.converting).length;
       await FlutterForegroundTask.updateService(
         notificationTitle: appName,
-        notificationText: work > 0
+        notificationText: active.isNotEmpty
+            ? '${active.length} 集下载中 · ${(bytes / 1048576).toStringAsFixed(1)} MB'
+            : work > 0 && converting > 0
+            ? '$converting 集正在处理'
+            : work > 0
             ? '正在迁移下载目录'
-            : active.isEmpty
-            ? '下载已完成或暂停'
-            : '${active.length} 集下载中 · ${(bytes / 1048576).toStringAsFixed(1)} MB',
+            : '下载已完成或暂停',
       );
     } catch (_) {
       await FlutterForegroundTask.updateService(

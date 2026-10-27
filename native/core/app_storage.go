@@ -198,6 +198,9 @@ func (engine *nativeEngine) workLease(id, command string) (int, error) {
 	if engine.work == nil {
 		engine.work = map[string]bool{}
 	}
+	manager := engine.downloads
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
 	if id != "" {
 		if id != "storage" {
 			return 0, errors.New("无效的本地任务")
@@ -205,9 +208,6 @@ func (engine *nativeEngine) workLease(id, command string) (int, error) {
 		if command != "start" && command != "end" {
 			return 0, errors.New("无效的本地任务操作")
 		}
-		manager := engine.downloads
-		manager.mu.Lock()
-		defer manager.mu.Unlock()
 		if command == "start" {
 			if engine.work[id] || manager.moving {
 				return 0, errors.New("已有本地任务正在运行，请稍后重试")
@@ -217,5 +217,5 @@ func (engine *nativeEngine) workLease(id, command string) (int, error) {
 			delete(engine.work, id)
 		}
 	}
-	return len(engine.work), nil
+	return len(engine.work) + len(manager.converting), nil
 }
