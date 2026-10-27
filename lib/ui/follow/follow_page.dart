@@ -55,9 +55,11 @@ class _FollowPageState extends State<FollowPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !AppScope.of(context).television) return;
         final focused = FocusManager.instance.primaryFocus;
-        if (target.context != null &&
-            (focused == null || focused is FocusScopeNode)) {
+        if (focused != null && focused is! FocusScopeNode) return;
+        if (target.context?.mounted ?? false) {
           revealFocus(target);
+        } else {
+          widget.onExitUp();
         }
       });
 
@@ -122,9 +124,7 @@ class _FollowPageState extends State<FollowPage> {
     await saveSetting(context, () => widget.store.removeFavorites(ids));
     if (!mounted) return;
     setState(() => _selection = null);
-    _keepFocus(
-      widget.entryFocus.context != null ? widget.entryFocus : _editButton,
-    );
+    _keepFocus(widget.entryFocus);
   }
 
   @override
@@ -134,12 +134,10 @@ class _FollowPageState extends State<FollowPage> {
       final follows = widget.store.favorites;
       final sources = followedSources(follows);
       final source = sources.any((site) => site.id == _source) ? _source : '';
-      final television =
-          AppScope.formFactorOf(context) == FormFactor.television;
       final shown = [
         for (final drama in follows)
           if ((source.isEmpty || drama.source == source) &&
-              (television || matchesFollowTitle(drama, _query.text)))
+              matchesFollowTitle(drama, _query.text))
             drama,
       ];
       final view = (
@@ -167,8 +165,12 @@ class _FollowPageState extends State<FollowPage> {
 
   Set<String> _ids(_View view) => {for (final drama in view.shown) drama.id};
 
-  Widget _search() =>
-      SearchField(hint: '搜索追剧', controller: _query, onSubmitted: (_) {});
+  Widget _search({FocusNode? focusNode}) => SearchField(
+    hint: '搜索追剧',
+    controller: _query,
+    focusNode: focusNode,
+    onSubmitted: (_) {},
+  );
 
   Widget _textButton(
     String label,
@@ -380,31 +382,43 @@ class _FollowPageState extends State<FollowPage> {
           inset: televisionInset,
           top: 14,
           header: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                televisionInset,
-                0,
-                televisionInset,
-                8,
-              ),
-              child: SizedBox(
-                height: 48,
-                child: Row(
-                  spacing: 12,
-                  children: view.selection == null
-                      ? [const Spacer(), _editButtonFor(view)]
-                      : [
-                          Expanded(
-                            child: _title(
-                              '已选择 ${view.selection!.length} 部',
-                              24,
+            if (view.follows.isNotEmpty || view.selection != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  televisionInset,
+                  0,
+                  televisionInset,
+                  8,
+                ),
+                child: SizedBox(
+                  height: 48,
+                  child: Row(
+                    spacing: 12,
+                    children: view.selection == null
+                        ? [
+                            SizedBox(
+                              width: 260,
+                              child: _search(
+                                focusNode: view.shown.isEmpty
+                                    ? widget.entryFocus
+                                    : null,
+                              ),
                             ),
-                          ),
-                          ..._editActions(view),
-                        ],
+                            const Spacer(),
+                            _editButtonFor(view),
+                          ]
+                        : [
+                            Expanded(
+                              child: _title(
+                                '已选择 ${view.selection!.length} 部',
+                                24,
+                              ),
+                            ),
+                            ..._editActions(view),
+                          ],
+                  ),
                 ),
               ),
-            ),
             ?_sources(view, inset: televisionInset),
           ],
         ),
@@ -446,9 +460,9 @@ class _FollowPageState extends State<FollowPage> {
         for (final drama in view.shown)
           if (!updated.contains(drama)) drama,
       ];
-      final sections = [
+      final sections = <(String?, List<Drama>)>[
         if (updated.isNotEmpty) ('有更新', updated),
-        if (rest.isNotEmpty) (updated.isEmpty ? '全部追剧' : '其他追剧', rest),
+        if (rest.isNotEmpty) (updated.isEmpty ? null : '其他追剧', rest),
       ];
       final first = view.shown.isEmpty
           ? null
@@ -471,37 +485,43 @@ class _FollowPageState extends State<FollowPage> {
             )
           else
             for (final (label, dramas) in sections) ...[
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(inset + 4, 12, inset, 10),
-                sliver: SliverToBoxAdapter(
-                  child: Semantics(
-                    header: true,
-                    child: Text.rich(
-                      TextSpan(
-                        text: label,
-                        children: [
-                          TextSpan(
-                            text: '  ${dramas.length}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
+              if (label != null)
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(inset + 4, 12, inset, 10),
+                  sliver: SliverToBoxAdapter(
+                    child: Semantics(
+                      header: true,
+                      child: Text.rich(
+                        TextSpan(
+                          text: label,
+                          children: [
+                            TextSpan(
+                              text: '  ${dramas.length}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                          ],
+                        ),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
               SliverPadding(
-                padding: EdgeInsets.symmetric(horizontal: inset),
+                padding: EdgeInsets.fromLTRB(
+                  inset,
+                  label == null ? 12 : 0,
+                  inset,
+                  0,
+                ),
                 sliver: SliverGrid.builder(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: columns,

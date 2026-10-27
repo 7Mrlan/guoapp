@@ -176,6 +176,7 @@ const _television = _Metrics(
   cellGap: 12,
   columns: 6,
   vipBadge: true,
+  follow: 52,
 );
 
 class DetailPage extends StatefulWidget {
@@ -194,6 +195,7 @@ class _DetailPageState extends State<DetailPage> {
   final _currentEpisode = GlobalKey();
   bool _expanded = false;
   final _playFocus = FocusNode();
+  final _followFocus = FocusNode();
   final _descriptionFocus = FocusNode();
   final _groupFocus = <FocusNode>[];
   final _episodeFocus = List.generate(episodeGroupSize, (_) => FocusNode());
@@ -215,6 +217,7 @@ class _DetailPageState extends State<DetailPage> {
     _details?.dispose();
     for (final node in [
       _playFocus,
+      _followFocus,
       _descriptionFocus,
       ..._groupFocus,
       ..._episodeFocus,
@@ -726,11 +729,17 @@ class _DetailPageState extends State<DetailPage> {
     }
     final group = _groupFocus.indexOf(node);
     final episode = _episodeFocus.indexOf(node);
-    if (node == _playFocus || node == _descriptionFocus) {
-      if (key == LogicalKeyboardKey.arrowRight) {
+    if (node == _playFocus ||
+        node == _followFocus ||
+        node == _descriptionFocus) {
+      if (key == LogicalKeyboardKey.arrowRight && node == _playFocus) {
+        _followFocus.requestFocus();
+      } else if (key == LogicalKeyboardKey.arrowRight) {
         _focusEpisodes(details);
+      } else if (key == LogicalKeyboardKey.arrowLeft && node == _followFocus) {
+        _playFocus.requestFocus();
       } else if (key == LogicalKeyboardKey.arrowDown &&
-          node == _playFocus &&
+          node != _descriptionFocus &&
           _descriptionFocus.context != null) {
         _descriptionFocus.requestFocus();
       } else if (key == LogicalKeyboardKey.arrowUp &&
@@ -887,7 +896,18 @@ class _DetailPageState extends State<DetailPage> {
         ),
         Padding(
           padding: const EdgeInsets.only(top: 24),
-          child: _playButton(details, m, focusNode: _playFocus),
+          child: Row(
+            spacing: 12,
+            children: [
+              Expanded(child: _playButton(details, m, focusNode: _playFocus)),
+              FollowPill(
+                store: widget.store,
+                drama: drama,
+                height: m.follow,
+                focusNode: _followFocus,
+              ),
+            ],
+          ),
         ),
         if (drama.description.isNotEmpty)
           Padding(

@@ -21,12 +21,14 @@ class FollowPill extends StatelessWidget {
     this.height = 40,
     this.radius,
     this.onToggled,
+    this.focusNode,
   });
   final LocalStore store;
   final Drama drama;
   final double height;
   final double? radius;
   final VoidCallback? onToggled;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -38,6 +40,7 @@ class FollowPill extends StatelessWidget {
         radius: corner,
         child: FilledButton.tonalIcon(
           key: const ValueKey('follow-toggle'),
+          focusNode: focusNode,
           onPressed: () {
             _toggle(context, store, drama);
             onToggled?.call();
@@ -57,7 +60,19 @@ class FollowPill extends StatelessWidget {
           icon: Icon(
             followed ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
           ),
-          label: Text(followed ? '已追剧' : '追剧'),
+          label: Stack(
+            alignment: Alignment.center,
+            children: [
+              const Visibility(
+                visible: false,
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: Text('已追剧'),
+              ),
+              Text(followed ? '已追剧' : '追剧'),
+            ],
+          ),
         ),
       );
     },

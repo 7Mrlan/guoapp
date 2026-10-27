@@ -33,6 +33,7 @@ class _HistoryPageState extends State<HistoryPage> {
   final _query = TextEditingController();
   final _firstPoster = FocusNode();
   final _editButton = FocusNode();
+  final _searchField = FocusNode();
   var _source = '';
   Set<String>? _selection;
 
@@ -47,16 +48,20 @@ class _HistoryPageState extends State<HistoryPage> {
     _query.dispose();
     _firstPoster.dispose();
     _editButton.dispose();
+    _searchField.dispose();
     super.dispose();
   }
 
-  void _keepFocus(FocusNode target) =>
+  void _keepFocus(FocusNode target, [FocusNode? fallback]) =>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !AppScope.of(context).television) return;
         final focused = FocusManager.instance.primaryFocus;
-        if (target.context != null &&
-            (focused == null || focused is FocusScopeNode)) {
-          revealFocus(target);
+        if (focused != null && focused is! FocusScopeNode) return;
+        for (final node in [target, ?fallback]) {
+          if (node.context?.mounted ?? false) {
+            revealFocus(node);
+            return;
+          }
         }
       });
 
@@ -113,7 +118,7 @@ class _HistoryPageState extends State<HistoryPage> {
     await saveSetting(context, () => widget.store.removeHistory(ids));
     if (!mounted) return;
     setState(() => _selection = null);
-    _keepFocus(_firstPoster.context != null ? _firstPoster : _editButton);
+    _keepFocus(_firstPoster, _searchField);
   }
 
   @override
@@ -156,9 +161,10 @@ class _HistoryPageState extends State<HistoryPage> {
     for (final entry in view.shown) entry.drama.id,
   };
 
-  Widget _search({double height = 40}) => SearchField(
+  Widget _search({double height = 40, FocusNode? focusNode}) => SearchField(
     hint: '搜索观看记录',
     controller: _query,
+    focusNode: focusNode,
     height: height,
     onSubmitted: (_) {},
   );
@@ -385,7 +391,10 @@ class _HistoryPageState extends State<HistoryPage> {
                 children: [
                   Expanded(child: _title(view, 24)),
                   if (view.selection == null) ...[
-                    SizedBox(width: 260, child: _search()),
+                    SizedBox(
+                      width: 260,
+                      child: _search(focusNode: _searchField),
+                    ),
                     ..._browseActions(view),
                   ] else
                     ..._editActions(view),
