@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -104,6 +106,35 @@ func TestStorageLeaseRejectsParallelAndRetiredTasks(t *testing.T) {
 	}
 	if count, err := engine.workLease("storage", "end"); err != nil || count != 0 {
 		t.Fatalf("end: %d %v", count, err)
+	}
+}
+
+func TestPathsOverlapAllowsSiblingsAndOtherVolumes(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "zhenguojian-downloads")
+	cases := []struct {
+		path    string
+		overlap bool
+	}{
+		{root, true},
+		{filepath.Join(root, "nested"), true},
+		{filepath.Dir(root), true},
+		{filepath.Join(filepath.Dir(root), "sibling"), false},
+		{filepath.Join(filepath.Dir(root), "..zhenguojian-downloads"), false},
+	}
+	if runtime.GOOS == "windows" {
+		volume := "D:"
+		if strings.EqualFold(filepath.VolumeName(root), volume) {
+			volume = "E:"
+		}
+		cases = append(cases, struct {
+			path    string
+			overlap bool
+		}{volume + `\zhenguojian-downloads`, false})
+	}
+	for _, item := range cases {
+		if got := nativePathsOverlap(root, item.path); got != item.overlap {
+			t.Fatalf("%s: overlap=%v want %v", item.path, got, item.overlap)
+		}
 	}
 }
 

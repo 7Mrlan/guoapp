@@ -141,10 +141,7 @@ func (engine *nativeEngine) moveDownloads(ctx context.Context, parent string) er
 		manager.mu.Unlock()
 		return nil
 	}
-	relative, _ := filepath.Rel(manager.root, target)
-	inverse, _ := filepath.Rel(target, manager.root)
-	if (relative != ".." && !strings.HasPrefix(relative, ".."+string(os.PathSeparator))) ||
-		(inverse != ".." && !strings.HasPrefix(inverse, ".."+string(os.PathSeparator))) {
+	if nativePathsOverlap(manager.root, target) {
 		manager.mu.Unlock()
 		return errors.New("新目录不能与原下载目录互相包含")
 	}
@@ -190,6 +187,14 @@ func (engine *nativeEngine) moveDownloads(ctx context.Context, parent string) er
 	manager.root = target
 	_ = os.RemoveAll(source)
 	return nil
+}
+
+func nativePathsOverlap(first, second string) bool {
+	inside := func(base, path string) bool {
+		relative, err := filepath.Rel(base, path)
+		return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(os.PathSeparator))
+	}
+	return inside(first, second) || inside(second, first)
 }
 
 func (engine *nativeEngine) workLease(id, command string) (int, error) {
