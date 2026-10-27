@@ -153,6 +153,9 @@ func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, pat
 	comment, _ := ctx.Value(hongguoCommentKey{}).(bool)
 	helper, _ := ctx.Value(hongguoHelperDeviceKey{}).(bool)
 	signed := !comment && path != hongguoBookmallTabPath
+	if signed {
+		_ = downloader.ensureHongguoDevice(ctx, helper, "")
+	}
 	client.mu.Lock()
 	base := client.baseURL
 	deviceID, installID, _ := client.deviceLocked(helper)
@@ -183,6 +186,7 @@ func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, pat
 		attempts = 3
 	}
 	var lastErr error
+	rotations := 0
 	for attempt := 0; attempt < attempts; attempt++ {
 		if attempt > 0 {
 			select {
@@ -244,6 +248,13 @@ func (downloader *Downloader) hongguoAppRequest(ctx context.Context, method, pat
 		}
 		if len(content) == 0 {
 			lastErr = errors.New("红果 App 接口未返回有效数据")
+			if signed && rotations < hongguoDeviceRotations && downloader.ensureHongguoDevice(ctx, helper, deviceID) == nil {
+				rotations++
+				deviceID, installID, _ = client.device(helper)
+				query.Set("device_id", deviceID)
+				query.Set("iid", installID)
+				attempt--
+			}
 			continue
 		}
 		if len(content) > providerMaxBodyBytes {
