@@ -224,7 +224,7 @@ class MinePage extends StatelessWidget {
       televisionInset,
       14,
       televisionInset,
-      40,
+      27,
     );
     final history = store.history;
     final recent = history.take(columns - 1).toList();
