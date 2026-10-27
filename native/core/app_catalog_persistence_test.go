@@ -257,8 +257,31 @@ func TestNativeCatalogPreservesLargeLibraryAndPage501(t *testing.T) {
 	}
 	restarted := reopenCatalogEngine(t, engine.directory, nil)
 	cached := restarted.nativeCached(key)
-	if len(cached.Items) != 6001 || cached.Page != 501 || cached.HasMore || len(restarted.catalogs[sourceHuangguoAI]) != 6002 {
-		t.Fatal("restart truncated data, advanced past lost IDs or duplicated category entries", len(cached.Items), cached.Page)
+	if len(cached.Items) != nativeCatalogMaxItems || cached.Items[0].ID != "huangguoai:1" || cached.Page != 501 || cached.HasMore || len(restarted.catalogs[sourceHuangguoAI]) != nativeCatalogMaxItems {
+		t.Fatal("restart did not keep the leading items within the limit or lost the page cursor", len(cached.Items), cached.Page)
+	}
+}
+
+func TestNativeCatalogLoadTrimsOversizedLegacyLists(t *testing.T) {
+	engine := sourceFixtureEngine(t, func(request *http.Request) (*http.Response, error) {
+		return nil, errors.New("network forbidden")
+	})
+	items := make([]nativeDrama, nativeCatalogMaxItems+500)
+	for index := range items {
+		items[index] = nativeDrama{ID: fmt.Sprintf("hongguo:%d", index+1), Source: sourceHongguo, Title: "合成目录"}
+	}
+	body, err := json.Marshal(nativeCatalogDisk{Version: 3, Catalogs: map[string][]nativeDrama{sourceHongguo: items},
+		States: map[string]nativeCatalogState{sourceHongguo: {Page: 400, HasMore: true}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(engine.directory, "catalogs.json"), body, 0600); err != nil {
+		t.Fatal(err)
+	}
+	restarted := reopenCatalogEngine(t, engine.directory, nil)
+	cached := restarted.nativeCached(sourceHongguo)
+	if len(cached.Items) != nativeCatalogMaxItems || cached.Items[nativeCatalogMaxItems-1].ID != fmt.Sprintf("hongguo:%d", nativeCatalogMaxItems) || cached.Page != 400 || !cached.HasMore {
+		t.Fatal("legacy list was not trimmed to its leading items", len(cached.Items), cached.Page)
 	}
 }
 
