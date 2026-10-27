@@ -107,29 +107,48 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final field = SearchField(
+      hint: '在 ${widget.source.name} 中搜索',
+      controller: _controller,
+      focusNode: _focus,
+      autofocus: widget.query.isEmpty,
+      onChanged: _changed,
+      onSubmitted: _submit,
+    );
+    if (AppScope.of(context).television) {
+      return Scaffold(
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                televisionInset,
+                27,
+                televisionInset,
+                0,
+              ),
+              child: field,
+            ),
+            Expanded(child: _body(context)),
+          ],
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
-        title: Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: SearchField(
-            hint: '在 ${widget.source.name} 中搜索',
-            controller: _controller,
-            focusNode: _focus,
-            autofocus: widget.query.isEmpty,
-            onChanged: _changed,
-            onSubmitted: _submit,
-          ),
-        ),
+        title: Padding(padding: const EdgeInsets.only(right: 16), child: field),
       ),
       body: SafeArea(top: false, bottom: false, child: _body(context)),
     );
   }
 
   Widget _body(BuildContext context) {
+    final television = AppScope.of(context).television;
     if (_suggestions.isNotEmpty && _controller.text.trim() != _submitted) {
       return ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: television
+            ? const EdgeInsets.fromLTRB(televisionInset, 8, televisionInset, 27)
+            : const EdgeInsets.symmetric(vertical: 8),
         children: [
           for (final item in _suggestions)
             TileFocus(
@@ -162,7 +181,6 @@ class _SearchPageState extends State<SearchPage> {
         icon: Icons.search_off_rounded,
       );
     }
-    final television = AppScope.of(context).television;
     final inset = television
         ? televisionInset
         : AppScope.formFactorOf(context) == FormFactor.phone
@@ -188,7 +206,12 @@ class _SearchPageState extends State<SearchPage> {
               ),
             ),
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(inset, 8, inset, 16),
+              padding: EdgeInsets.fromLTRB(
+                inset,
+                8,
+                inset,
+                television ? 27 : 16,
+              ),
               sliver: SliverToBoxAdapter(child: FeedFooter(feed: results)),
             ),
           ],
@@ -210,7 +233,9 @@ class _SearchPageState extends State<SearchPage> {
       }
       final theme = Theme.of(context);
       return ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: AppScope.of(context).television
+            ? const EdgeInsets.fromLTRB(televisionInset, 8, televisionInset, 27)
+            : const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           Row(
             children: [

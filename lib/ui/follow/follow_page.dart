@@ -134,10 +134,12 @@ class _FollowPageState extends State<FollowPage> {
       final follows = widget.store.favorites;
       final sources = followedSources(follows);
       final source = sources.any((site) => site.id == _source) ? _source : '';
+      final television =
+          AppScope.formFactorOf(context) == FormFactor.television;
       final shown = [
         for (final drama in follows)
           if ((source.isEmpty || drama.source == source) &&
-              matchesFollowTitle(drama, _query.text))
+              (television || matchesFollowTitle(drama, _query.text)))
             drama,
       ];
       final view = (
@@ -165,12 +167,8 @@ class _FollowPageState extends State<FollowPage> {
 
   Set<String> _ids(_View view) => {for (final drama in view.shown) drama.id};
 
-  Widget _search({FocusNode? focusNode}) => SearchField(
-    hint: '搜索追剧',
-    controller: _query,
-    focusNode: focusNode,
-    onSubmitted: (_) {},
-  );
+  Widget _search() =>
+      SearchField(hint: '搜索追剧', controller: _query, onSubmitted: (_) {});
 
   Widget _textButton(
     String label,
@@ -394,18 +392,7 @@ class _FollowPageState extends State<FollowPage> {
                 child: Row(
                   spacing: 12,
                   children: view.selection == null
-                      ? [
-                          SizedBox(
-                            width: 260,
-                            child: _search(
-                              focusNode: view.shown.isEmpty
-                                  ? widget.entryFocus
-                                  : null,
-                            ),
-                          ),
-                          const Spacer(),
-                          _editButtonFor(view),
-                        ]
+                      ? [const Spacer(), _editButtonFor(view)]
                       : [
                           Expanded(
                             child: _title(
