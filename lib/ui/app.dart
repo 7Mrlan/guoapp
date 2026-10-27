@@ -276,19 +276,13 @@ class _BootScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: 24,
           children: [
-            Icon(
-              Icons.play_circle_fill_rounded,
-              color: Theme.of(context).colorScheme.primary,
-              size: 72,
-            ),
+            if (error == null) const CircularProgressIndicator(),
             Text(
               error ?? '正在打开$appName',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            if (error == null)
-              const CircularProgressIndicator()
-            else if (onRetry != null)
+            if (error != null && onRetry != null)
               FilledButton(onPressed: onRetry, child: const Text('重新打开')),
           ],
         ),
