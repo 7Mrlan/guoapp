@@ -137,6 +137,10 @@ func (engine *nativeEngine) moveDownloads(ctx context.Context, parent string) er
 		manager.mu.Unlock()
 		return errors.New("下载目录正在处理，请稍后重试")
 	}
+	if len(manager.converting) > 0 {
+		manager.mu.Unlock()
+		return errors.New("请等待下载的分集处理完成后再迁移")
+	}
 	if target == manager.root {
 		manager.mu.Unlock()
 		return nil

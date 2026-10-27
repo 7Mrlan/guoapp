@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../download_converter.dart';
 import '../../download_overview.dart';
 import '../../follow_updater.dart';
 import '../../local_store.dart';
@@ -56,6 +57,7 @@ class _AppShellState extends State<AppShell> {
   var _headerFocused = false;
   FocusNode? _lastFocus;
   DownloadOverview? _downloads;
+  DownloadConverter? _converter;
   FollowUpdater? _followUpdater;
 
   NavigatorState? get _navigator => _navigators[_tab.index].currentState;
@@ -73,6 +75,10 @@ class _AppShellState extends State<AppShell> {
       AppScope.of(context).repository,
       widget.store,
     );
+    _converter ??= DownloadConverter(
+      AppScope.of(context).repository,
+      _downloads!,
+    );
     _followUpdater ??= FollowUpdater(
       AppScope.of(context).repository,
       widget.store,
@@ -88,6 +94,7 @@ class _AppShellState extends State<AppShell> {
     _followEntry.dispose();
     _mineEntry.dispose();
     _header.dispose();
+    _converter?.dispose();
     _downloads?.dispose();
     _followUpdater?.dispose();
     super.dispose();
@@ -126,6 +133,7 @@ class _AppShellState extends State<AppShell> {
     AppTab.mine => MinePage(
       store: widget.store,
       downloads: _downloads!,
+      converter: _converter!,
       entryFocus: _mineEntry,
       onExitUp: _tabFocus[AppTab.mine.index].requestFocus,
     ),

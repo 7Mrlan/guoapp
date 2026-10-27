@@ -385,9 +385,11 @@ class DownloadJob {
   bool get completed => state == 'completed';
   bool get active => state == 'queued' || state == 'downloading';
   bool get resumable => state == 'paused' || state == 'failed';
+  bool get converting => state == 'converting';
   String get stateLabel => switch (state) {
     'queued' => '等待下载',
     'downloading' => '正在下载',
+    'converting' => '正在处理',
     'paused' => '已暂停',
     'failed' => '下载失败',
     'completed' => '已下载',
@@ -413,6 +415,8 @@ class DownloadJob {
     archived: value['archived'] == true,
   );
 }
+
+typedef DownloadConversion = ({String input, String key, String output});
 
 List<Map<String, dynamic>> readJsonList(String? value) {
   try {

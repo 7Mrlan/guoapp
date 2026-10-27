@@ -121,6 +121,9 @@ abstract class AppRepository {
     int quality = 0,
   }) async => throw AppFailure('当前环境不支持下载');
   Future<void> controlDownloads(String command, {String id = ''}) async {}
+  Future<DownloadConversion> beginConversion(String id) async =>
+      throw AppFailure('当前环境不支持处理下载');
+  Future<void> finishConversion(String id, String result) async {}
   Future<DownloadBatchResult> controlDownloadBatch(
     String command,
     List<String> ids, {
@@ -445,6 +448,7 @@ class NativeRepository extends AppRepository {
             'updateSystemProxy',
           }.contains(action) ||
           action == 'workLease' && input['command'] == 'end' ||
+          action == 'finishConversion' ||
           action == 'lan' &&
               {
                 'stop',
@@ -486,6 +490,7 @@ class NativeRepository extends AppRepository {
             'downloads',
             'controlDownloads',
             'controlDownloadBatch',
+            'beginConversion',
             'storage',
             'downloadDirectory',
             'moveDownloads',
@@ -805,6 +810,21 @@ class NativeRepository extends AppRepository {
       'command': command,
       'jobId': id,
     });
+  }
+
+  @override
+  Future<DownloadConversion> beginConversion(String id) async {
+    final result = await _call({'action': 'beginConversion', 'jobId': id});
+    return (
+      input: result['input'] as String? ?? '',
+      key: result['key'] as String? ?? '',
+      output: result['output'] as String? ?? '',
+    );
+  }
+
+  @override
+  Future<void> finishConversion(String id, String result) async {
+    await _call({'action': 'finishConversion', 'jobId': id, 'command': result});
   }
 
   @override

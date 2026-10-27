@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../download_converter.dart';
 import '../../download_overview.dart';
 import '../../local_store.dart';
 import '../../models.dart';
@@ -25,11 +26,13 @@ class MinePage extends StatelessWidget {
     super.key,
     required this.store,
     required this.downloads,
+    required this.converter,
     required this.entryFocus,
     required this.onExitUp,
   });
   final LocalStore store;
   final DownloadOverview downloads;
+  final DownloadConverter converter;
   final FocusNode entryFocus;
   final VoidCallback onExitUp;
 
@@ -53,7 +56,8 @@ class MinePage extends StatelessWidget {
 
   void _openDownloads(BuildContext context) => openPage<void>(
     context,
-    (_) => DownloadsPage(store: store, downloads: downloads),
+    (_) =>
+        DownloadsPage(store: store, downloads: downloads, converter: converter),
   );
 
   Widget _userCard(BuildContext context) =>

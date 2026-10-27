@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../download_collections.dart';
+import '../../download_converter.dart';
 import '../../download_overview.dart';
 import '../../local_store.dart';
 import '../../models.dart';
@@ -27,9 +28,11 @@ class DownloadsPage extends StatefulWidget {
     super.key,
     required this.store,
     required this.downloads,
+    required this.converter,
   });
   final LocalStore store;
   final DownloadOverview downloads;
+  final DownloadConverter converter;
 
   @override
   State<DownloadsPage> createState() => _DownloadsPageState();
@@ -117,7 +120,12 @@ class _DownloadsPageState extends State<DownloadsPage>
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([widget.store, widget.downloads, _tabs]),
+    listenable: Listenable.merge([
+      widget.store,
+      widget.downloads,
+      widget.converter,
+      _tabs,
+    ]),
     builder: (context, _) {
       final jobs = widget.downloads.jobs;
       final index = _tabs.index;
@@ -433,6 +441,7 @@ class _DownloadsPageState extends State<DownloadsPage>
     final summary = [
       for (final (state, label) in const [
         ('downloading', '下载中'),
+        ('converting', '处理中'),
         ('queued', '等待'),
         ('paused', '已暂停'),
         ('failed', '失败'),
@@ -457,6 +466,9 @@ class _DownloadsPageState extends State<DownloadsPage>
           : _JobRow(
               key: ValueKey(view.pending[index - 1].id),
               job: view.pending[index - 1],
+              conversion: widget.converter.progressOf(
+                view.pending[index - 1].id,
+              ),
               selected: view.selection?.contains(view.pending[index - 1].id),
               busy: _busy,
               onToggle: () => _toggle(view.pending[index - 1].id),
@@ -535,12 +547,14 @@ class _JobRow extends StatelessWidget {
   const _JobRow({
     super.key,
     required this.job,
+    required this.conversion,
     required this.selected,
     required this.busy,
     required this.onToggle,
     required this.onControl,
   });
   final DownloadJob job;
+  final double? conversion;
   final bool? selected;
   final bool busy;
   final VoidCallback onToggle;
@@ -551,12 +565,15 @@ class _JobRow extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final downloading = job.state == 'downloading';
     final failed = job.state == 'failed';
+    final converted = (conversion ?? 0) > 0 ? conversion : null;
     final state = downloading
         ? '${(job.progress * 100).round()}%'
+        : converted != null
+        ? '${job.stateLabel} ${(converted * 100).round()}%'
         : job.stateLabel;
     final detail = switch (job.state) {
       'failed' => job.error,
-      'queued' => '',
+      'queued' || 'converting' => '',
       _ when job.total > 0 =>
         '${formatBytes(job.bytes)} / ${formatBytes(job.total)}',
       _ when job.bytes > 0 => formatBytes(job.bytes),
@@ -627,10 +644,12 @@ class _JobRow extends StatelessWidget {
                             ],
                           ),
                           LinearProgressIndicator(
-                            value: job.progress,
+                            value: job.converting ? converted : job.progress,
                             minHeight: 4,
                             borderRadius: BorderRadius.circular(2),
-                            color: downloading ? null : colors.outline,
+                            color: downloading || job.converting
+                                ? null
+                                : colors.outline,
                           ),
                           Row(
                             spacing: 12,
@@ -641,7 +660,7 @@ class _JobRow extends StatelessWidget {
                                   fontWeight: FontWeight.w600,
                                   color: failed
                                       ? colors.error
-                                      : downloading
+                                      : downloading || job.converting
                                       ? colors.primary
                                       : null,
                                 ),
@@ -660,7 +679,7 @@ class _JobRow extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (selected == null)
+                  if (selected == null && !job.converting)
                     FocusRing(
                       radius: 20,
                       child: IconButton.filledTonal(

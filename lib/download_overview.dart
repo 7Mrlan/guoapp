@@ -25,7 +25,7 @@ class DownloadOverview extends ChangeNotifier {
 
   bool get available => store.canDownload && repository.supportsDownloads;
   List<DownloadJob> get jobs => _jobs;
-  int get active => _jobs.where((job) => job.active).length;
+  int get active => _jobs.where((job) => job.active || job.converting).length;
   int get completed => _jobs.where((job) => job.completed).length;
   int get completedBytes => _jobs
       .where((job) => job.completed)

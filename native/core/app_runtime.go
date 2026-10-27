@@ -404,6 +404,10 @@ func nativeDispatch(input nativeInput) (any, error) {
 		return map[string]int{"added": added}, err
 	case "controlDownloads":
 		return true, engine.downloads.control(input.JobID, input.Command)
+	case "beginConversion":
+		return engine.downloads.beginConversion(input.JobID)
+	case "finishConversion":
+		return true, engine.downloads.finishConversion(input.JobID, input.Command)
 	case "localPlayback":
 		plan, _, err := engine.downloads.localPlan(input.Drama.ID, input.Index)
 		return plan, err

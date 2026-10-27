@@ -16,6 +16,14 @@ func (manager *nativeDownloads) jobDirectory(job nativeDownloadJob) string {
 }
 
 func (manager *nativeDownloads) localFilesValid(record nativeDownloadRecord) bool {
+	if record.Output != "" {
+		info, err := os.Stat(manager.outputFile(record.Output))
+		return err == nil && info.Mode().IsRegular() && info.Size() > 0 && (record.Bytes <= 0 || info.Size() == record.Bytes)
+	}
+	return manager.rawFilesValid(record)
+}
+
+func (manager *nativeDownloads) rawFilesValid(record nativeDownloadRecord) bool {
 	if record.File == "" {
 		return false
 	}
