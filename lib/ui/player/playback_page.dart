@@ -44,6 +44,7 @@ class _PlaybackPageState extends State<PlaybackPage> {
     _session.removeListener(_changed);
     if (_padFullscreen.value) _applyPadFullscreen(false);
     _padFullscreen.dispose();
+    unawaited(AppDevice.resetBrightness());
     widget.handle.dispose();
     super.dispose();
   }

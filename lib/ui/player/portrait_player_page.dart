@@ -19,6 +19,7 @@ import 'episode_grid.dart';
 import 'playback_sheets.dart';
 import 'playback_handle.dart';
 import 'player_surface.dart';
+import 'swipe_controls.dart';
 
 const _maskHeight = 68.0;
 
@@ -328,16 +329,19 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
               controller: session.danmaku,
               aspectRatio: session.aspectRatio,
             ),
-            LayoutBuilder(
+            SwipeControls(
               key: const ValueKey('gestures'),
-              builder: (context, constraints) => GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: session.togglePlayback,
-                onLongPressStart: (details) =>
-                    _pressStart(details, constraints.maxWidth),
-                onLongPressMoveUpdate: _pressMove,
-                onLongPressEnd: (_) => _pressEnd(),
-                onLongPressCancel: _pressEnd,
+              session: session,
+              child: LayoutBuilder(
+                builder: (context, constraints) => GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: session.togglePlayback,
+                  onLongPressStart: (details) =>
+                      _pressStart(details, constraints.maxWidth),
+                  onLongPressMoveUpdate: _pressMove,
+                  onLongPressEnd: (_) => _pressEnd(),
+                  onLongPressCancel: _pressEnd,
+                ),
               ),
             ),
           ],

@@ -23,6 +23,7 @@ import 'episode_grid.dart';
 import 'playback_handle.dart';
 import 'playback_sheets.dart';
 import 'player_surface.dart';
+import 'swipe_controls.dart';
 
 enum _Panel { episodes, settings, speed, quality }
 
@@ -426,13 +427,18 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
           controller: session.danmaku,
           aspectRatio: session.aspectRatio,
         ),
-        LayoutBuilder(
-          builder: (context, constraints) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapUp: (details) => _tapUp(details, constraints.maxWidth, full),
-            onLongPressStart: (_) => _pressStart(),
-            onLongPressEnd: (_) => _pressEnd(),
-            onLongPressCancel: _pressEnd,
+        SwipeControls(
+          session: session,
+          enabled: full,
+          levels: true,
+          child: LayoutBuilder(
+            builder: (context, constraints) => GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapUp: (details) => _tapUp(details, constraints.maxWidth, full),
+              onLongPressStart: (_) => _pressStart(),
+              onLongPressEnd: (_) => _pressEnd(),
+              onLongPressCancel: _pressEnd,
+            ),
           ),
         ),
         if (session.ready && session.stalled)

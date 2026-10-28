@@ -10,6 +10,7 @@ import '../../playback_preferences.dart';
 import '../../playback_session.dart';
 import 'danmaku_overlay.dart';
 import 'playback_handle.dart';
+import 'swipe_controls.dart';
 
 String formatClock(Duration value) {
   final seconds = value.inSeconds;
@@ -311,13 +312,18 @@ class _PlayerSurfaceState extends State<PlayerSurface> {
               aspectRatio: _session.aspectRatio,
             ),
             if (widget.touch)
-              LayoutBuilder(
-                builder: (context, constraints) => GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapUp: (details) => _tapUp(details, constraints.maxWidth),
-                  onLongPressStart: (_) => _pressStart(),
-                  onLongPressEnd: (_) => _pressEnd(),
-                  onLongPressCancel: _pressEnd,
+              SwipeControls(
+                session: _session,
+                enabled: widget.fullscreen,
+                levels: true,
+                child: LayoutBuilder(
+                  builder: (context, constraints) => GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (details) => _tapUp(details, constraints.maxWidth),
+                    onLongPressStart: (_) => _pressStart(),
+                    onLongPressEnd: (_) => _pressEnd(),
+                    onLongPressCancel: _pressEnd,
+                  ),
                 ),
               )
             else

@@ -19,7 +19,9 @@ import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.Rect
+import android.media.AudioManager
 import android.net.ConnectivityManager
 import android.net.Uri
 import android.util.Rational
@@ -32,6 +34,7 @@ import androidx.annotation.ChecksSdkIntAtLeast
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
+import kotlin.math.roundToInt
 
 private const val SURFACE_RESIZE_REDRAW_WAIT_MS = 100L
 private const val ORIENTATION_SETTLE_MS = 800L
@@ -310,7 +313,12 @@ class MainActivity : FlutterActivity() {
                                         contentResolver,
                                         Settings.System.SCREEN_BRIGHTNESS
                                     )
-                                    (sys / 255.0).coerceIn(0.0, 1.0)
+                                    val resources = Resources.getSystem()
+                                    val maxId = resources.getIdentifier(
+                                        "config_screenBrightnessSettingMaximum", "integer", "android"
+                                    )
+                                    val max = if (maxId != 0) resources.getInteger(maxId) else 255
+                                    (sys / max.coerceAtLeast(1).toDouble()).coerceIn(0.0, 1.0)
                                 } catch (e: Exception) {
                                     0.5
                                 }
@@ -333,6 +341,28 @@ class MainActivity : FlutterActivity() {
                             lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
                             window.attributes = lp
                             result.success(true)
+                        }
+                        "volume" -> {
+                            val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                            val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                            result.success(
+                                if (max > 0) audio.getStreamVolume(AudioManager.STREAM_MUSIC).toDouble() / max
+                                else null
+                            )
+                        }
+                        "setVolume" -> {
+                            val value = call.argument<Double>("volume")
+                            if (value == null) {
+                                result.error("invalid_arg", "缺少音量数值", null)
+                            } else {
+                                val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                                val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                                val index = (value.coerceIn(0.0, 1.0) * max).roundToInt()
+                                if (index != audio.getStreamVolume(AudioManager.STREAM_MUSIC)) {
+                                    audio.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0)
+                                }
+                                result.success(null)
+                            }
                         }
                         "openExternalPlayer" -> {
                             val url = call.argument<String>("url")

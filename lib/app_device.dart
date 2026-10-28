@@ -115,6 +115,40 @@ class AppDevice {
     } catch (_) {}
   }
 
+  static Future<double?> brightness() async {
+    try {
+      return await channel.invokeMethod<double>('getBrightness');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> setBrightness(double value) async {
+    try {
+      await channel.invokeMethod<void>('setBrightness', {'brightness': value});
+    } catch (_) {}
+  }
+
+  static Future<void> resetBrightness() async {
+    try {
+      await channel.invokeMethod<void>('resetBrightness');
+    } catch (_) {}
+  }
+
+  static Future<double?> volume() async {
+    try {
+      return await channel.invokeMethod<double>('volume');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> setVolume(double value) async {
+    try {
+      await channel.invokeMethod<void>('setVolume', {'volume': value});
+    } catch (_) {}
+  }
+
   static Future<({int level, bool charging})?> battery() async {
     try {
       final data = await channel.invokeMapMethod<String, dynamic>('battery');
