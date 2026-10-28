@@ -110,6 +110,7 @@ class SettingsSection extends StatelessWidget {
 
   List<Widget> _playback(BuildContext context) {
     final preferences = store.playbackPreferences;
+    final television = AppScope.of(context).television;
     void savePreferences(PlaybackPreferences next) =>
         saveSetting(context, () => store.setPlaybackPreferences(next));
     return [
@@ -117,7 +118,7 @@ class SettingsSection extends StatelessWidget {
         children: [
           ValueTile<double>(
             title: '默认倍速',
-            subtitle: '播放时调整倍速也会更新这里',
+            subtitle: '与播放器内设置同步',
             options: {for (final speed in playbackSpeeds) speed: '${speed}x'},
             value: preferences.speed,
             onChanged: (speed) =>
@@ -154,14 +155,31 @@ class SettingsSection extends StatelessWidget {
           SwitchTile(
             title: '预开下一集',
             subtitle: '提前打开下一集的播放器，切集无需等待',
-            value: preferences.preopens(
-              television: AppScope.of(context).television,
-            ),
+            value: preferences.preopens(television: television),
             onChanged: (value) =>
                 savePreferences(preferences.copyWith(preopen: value)),
           ),
         ],
       ),
+      if ((Platform.isAndroid || Platform.isIOS) && !television)
+        SettingsCard(
+          children: [
+            SwitchTile(
+              title: '双击快退/快进',
+              subtitle: '左侧双击快退，右侧双击快进，关闭时均为暂停',
+              value: preferences.doubleTapSeek,
+              onChanged: (value) =>
+                  savePreferences(preferences.copyWith(doubleTapSeek: value)),
+            ),
+            SwitchTile(
+              title: '滑动调节亮度/音量',
+              subtitle: '左侧上下滑动调整亮度，右侧上下滑动调整音量',
+              value: preferences.swipeLevels,
+              onChanged: (value) =>
+                  savePreferences(preferences.copyWith(swipeLevels: value)),
+            ),
+          ],
+        ),
     ];
   }
 

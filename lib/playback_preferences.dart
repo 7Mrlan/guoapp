@@ -14,6 +14,8 @@ class PlaybackPreferences {
     this.enhancement = const VideoEnhancementPreferences(),
     this.televisionDecoder = TelevisionDecoder.optimized,
     this.preopen,
+    this.doubleTapSeek = true,
+    this.swipeLevels = true,
   });
 
   final double speed;
@@ -24,6 +26,8 @@ class PlaybackPreferences {
   final VideoEnhancementPreferences enhancement;
   final TelevisionDecoder televisionDecoder;
   final bool? preopen;
+  final bool doubleTapSeek;
+  final bool swipeLevels;
 
   bool preopens({required bool television}) => preopen ?? !television;
 
@@ -36,6 +40,8 @@ class PlaybackPreferences {
     VideoEnhancementPreferences? enhancement,
     TelevisionDecoder? televisionDecoder,
     bool? preopen,
+    bool? doubleTapSeek,
+    bool? swipeLevels,
   }) => PlaybackPreferences(
     speed: speed ?? this.speed,
     quality: quality ?? this.quality,
@@ -45,6 +51,8 @@ class PlaybackPreferences {
     enhancement: enhancement ?? this.enhancement,
     televisionDecoder: televisionDecoder ?? this.televisionDecoder,
     preopen: preopen ?? this.preopen,
+    doubleTapSeek: doubleTapSeek ?? this.doubleTapSeek,
+    swipeLevels: swipeLevels ?? this.swipeLevels,
   );
 
   Map<String, dynamic> toJson() => {
@@ -56,6 +64,8 @@ class PlaybackPreferences {
     'enhancement': enhancement.toJson(),
     'televisionDecoder': televisionDecoder.name,
     if (preopen != null) 'preopen': preopen,
+    'doubleTapSeek': doubleTapSeek,
+    'swipeLevels': swipeLevels,
   };
 
   factory PlaybackPreferences.fromJson(Map<String, dynamic> value) {
@@ -78,6 +88,8 @@ class PlaybackPreferences {
           TelevisionDecoder.values.asNameMap()[value['televisionDecoder']] ??
           TelevisionDecoder.optimized,
       preopen: value['preopen'] as bool?,
+      doubleTapSeek: value['doubleTapSeek'] as bool? ?? true,
+      swipeLevels: value['swipeLevels'] as bool? ?? true,
     );
   }
 }
