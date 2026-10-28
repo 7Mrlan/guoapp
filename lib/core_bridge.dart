@@ -34,7 +34,7 @@ String _nativeRequest(String body) {
     library = DynamicLibrary.open(
       path.join(path.dirname(Platform.resolvedExecutable), 'duanju_core.dll'),
     );
-  } else if (Platform.isIOS) {
+  } else if (Platform.isIOS || Platform.isMacOS) {
     library = DynamicLibrary.process();
   } else {
     throw UnsupportedError('当前首版支持 Android 手机和 Windows 电脑');

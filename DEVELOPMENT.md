@@ -6,7 +6,7 @@ Flutter `3.47.4`、Dart `3.12+`、Go `1.24.1+`、Python `3.10+`。
 
 - Android：JDK 17、SDK 36、NDK `28.2.13676358`
 - Windows：Visual Studio C++ 桌面组件、MinGW-w64 x64
-- iOS：macOS、完整 Xcode、CocoaPods
+- iOS / macOS：macOS、完整 Xcode、CocoaPods
 
 构建脚本对子进程默认设置 `GOPROXY=https://goproxy.cn,direct`、`GOSUMDB=off`，同名环境变量可覆盖。
 
@@ -20,7 +20,7 @@ flutter pub get --enforce-lockfile
 flutter run
 ~~~
 
-调试真果鉴（全站源版）：`build_native.py` 加 `--all-sources`，再 `flutter run --dart-define=ALL_SOURCES=true`；iOS 对应 `build_ios.py --core-only --all-sources`。版本是编译期开关，Dart 常量和 Go 编译参数必须一致，应用启动时会校验，避免混装原生库。
+调试真果鉴（全站源版）：`build_native.py` 加 `--all-sources`，再 `flutter run --dart-define=ALL_SOURCES=true`；iOS 对应 `build_ios.py --core-only --all-sources`，macOS 对应 `build_macos.py --core-only --all-sources`。版本是编译期开关，Dart 常量和 Go 编译参数必须一致，应用启动时会校验，避免混装原生库。
 
 ## 出包
 
@@ -32,9 +32,11 @@ python scripts/build_windows.py [--all-sources]
 python3 scripts/build_ios.py [--all-sources]
 python3 scripts/build_ios.py --core-only [--simulator]
 python3 scripts/build_ios.py --export-options /path/to/ExportOptions.plist
+python3 scripts/build_macos.py [--all-sources]
+python3 scripts/build_macos.py --core-only
 ~~~
 
-产物在 `dist/android`、`dist/windows`、`dist/ios`，红果鉴以 `hongguojian-` 开头，真果鉴以 `zhenguojian-` 开头。本机 Android 签名使用 `android/key.properties`（不入库）。
+产物在 `dist/android`、`dist/windows`、`dist/ios`、`dist/macos`，红果鉴以 `hongguojian-` 开头，真果鉴以 `zhenguojian-` 开头。本机 Android 签名使用 `android/key.properties`（不入库）。
 
 其他脚本：`generate_brand_assets.py` 从 `brand_icon.svg` 生成各平台图标；`clear_app_data.py`、`clear_catalog_cache.py` 清理 Windows 上的应用数据和剧库缓存。
 
@@ -69,7 +71,7 @@ Flutter 界面 + Go 原生核心。站源请求、解析、签名、缓存、下
 | `lib/ui` | 界面：主题、导航壳、各页面、播放器、公共组件 |
 | `lib` | 逻辑层：FFI、站源目录、播放、下载、本地存储与用户 |
 | `native/core`、`native/bridge` | Go 站源核心、缓存、下载、播放代理及 C ABI |
-| `android`、`windows`、`ios` | 平台工程与资源 |
+| `android`、`windows`、`ios`、`macos` | 平台工程与资源 |
 | `packages/media_kit_libs_windows_video` | 本地覆盖的 Windows 媒体依赖插件 |
 | `scripts` | 构建、图标生成与数据清理脚本 |
 | `test` | 逻辑层测试 |
@@ -88,15 +90,16 @@ Go RE2 正则**不支持 lookahead**。解析多线路播放列表时不能用 `
 2. 在 `CHANGELOG.md` 新增同名一节（标题如 `## 1.0.1+101`），工作流会把它写入 Release 说明；未验证的改动标为开发快照。
 3. 推送到 `main`，在 Actions 中手动运行 **Build app packages**。
 
-工作流先检查版本：tag `app-v{version}`（`+` 替换为 `-`）或同名 Release 已存在时直接失败。随后三个平台各构建红果鉴、真果鉴两版：
+工作流先检查版本：tag `app-v{version}`（`+` 替换为 `-`）或同名 Release 已存在时直接失败。随后四个平台各构建红果鉴、真果鉴两版：
 
 | 产物 | 内容 |
 | --- | --- |
 | `*-android` | 三种架构 APK，使用发布证书签名并通过指纹校验 |
 | `*-windows` | Windows x64 ZIP |
 | `*-ios-unsigned` | arm64 iPhone 未签名 IPA |
+| `*-macos` | arm64 + x86_64 通用 ZIP，ad-hoc 签名、未公证 |
 
-格式、分析、测试不阻塞出包；Android、Windows、iOS 全部成功后才创建 tag 和 Release，任一平台失败就不发布，已有 Release 不会被覆盖。
+格式、分析、测试不阻塞出包；Android、Windows、iOS、macOS 全部成功后才创建 tag 和 Release，任一平台失败就不发布，已有 Release 不会被覆盖。
 
 Android 签名只用仓库 Secrets：`ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`，另需仓库变量 `ANDROID_CERT_SHA256`（证书 SHA-256，冒号和大小写不限），缺任意一项都会失败。CI 通过环境变量把签名传给 Gradle。
 
@@ -113,4 +116,4 @@ npx wrangler d1 execute guoapp-stats --remote --command "SELECT COUNT(DISTINCT i
 npx wrangler d1 execute guoapp-stats --remote --command "SELECT platform, build, version, COUNT(*) FROM pings WHERE day = date('now', '+8 hours') GROUP BY 1, 2, 3 ORDER BY 4 DESC"  # 今日分布
 ~~~
 
-应用显示名：Android 在 `android/app/build.gradle.kts`，Windows 在 `windows/runner/app_branding.cmake`，iOS 由 Xcode「Thin Binary」构建阶段按 `DART_DEFINES` 写入。iOS 的 `CFBundleDisplayName` 用英文 `HongGuoJian` / `ZhenGuoJian` 以通过侧载工具的名称校验，中文名写在 `zh-Hans.lproj/InfoPlist.strings`。
+应用显示名：Android 在 `android/app/build.gradle.kts`，Windows 在 `windows/runner/app_branding.cmake`，iOS 由 Xcode「Thin Binary」构建阶段按 `DART_DEFINES` 写入。iOS 的 `CFBundleDisplayName` 用英文 `HongGuoJian` / `ZhenGuoJian` 以通过侧载工具的名称校验，中文名写在 `zh-Hans.lproj/InfoPlist.strings`。macOS 同样由 Runner 的 Run Script 构建阶段写入，窗口标题取本地化后的 `CFBundleDisplayName`；macOS 关闭了 App Sandbox，以便本地播放代理和自选下载目录正常工作，系统代理由 `MainFlutterWindow.swift` 的 `duanju/device` 通道读取。

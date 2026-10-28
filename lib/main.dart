@@ -20,7 +20,7 @@ Future<void> main() async {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setSystemUIOverlayStyle(AppTheme.systemBars(Brightness.dark));
   }
-  if (Platform.isWindows) {
+  if (Platform.isWindows || Platform.isMacOS) {
     await windowManager.ensureInitialized();
   }
   MediaKit.ensureInitialized();

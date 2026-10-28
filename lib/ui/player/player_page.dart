@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
@@ -71,8 +70,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _playback.setForeground(
       state == AppLifecycleState.resumed ||
-          defaultTargetPlatform == TargetPlatform.windows &&
-              state == AppLifecycleState.inactive,
+          desktopPlatform && state == AppLifecycleState.inactive,
     );
   }
 

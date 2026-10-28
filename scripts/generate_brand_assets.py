@@ -43,6 +43,13 @@ for entry in contents['images']:
         size = round(float(entry['size'].split('x')[0]) * float(entry['scale'].rstrip('x')))
         save(icon.resize((size, size), Image.Resampling.LANCZOS),
              'ios/Runner/Assets.xcassets/AppIcon.appiconset/' + entry['filename'])
+desktop = Image.new('RGBA', (1024, 1024))
+desktop.paste(rounded.resize((824, 824), Image.Resampling.LANCZOS), (100, 100))
+contents = json.loads((root / 'macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json').read_text())
+for entry in contents['images']:
+    size = round(float(entry['size'].split('x')[0]) * float(entry['scale'].rstrip('x')))
+    save(desktop.resize((size, size), Image.Resampling.LANCZOS),
+         'macos/Runner/Assets.xcassets/AppIcon.appiconset/' + entry['filename'])
 save(rounded.resize((256, 256), Image.Resampling.LANCZOS), 'windows/runner/resources/app_icon.ico')
 for density, scale in [('mdpi', 1), ('hdpi', 1.5), ('xhdpi', 2), ('xxhdpi', 3), ('xxxhdpi', 4)]:
     legacy = round(48 * scale)

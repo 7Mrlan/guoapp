@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
@@ -60,7 +59,7 @@ class _PlaybackPageState extends State<PlaybackPage> {
   }
 
   void _applyPadFullscreen(bool full) {
-    if (defaultTargetPlatform == TargetPlatform.windows) {
+    if (desktopPlatform) {
       unawaited(windowManager.setFullScreen(full).catchError((Object _) {}));
       return;
     }
@@ -79,7 +78,7 @@ class _PlaybackPageState extends State<PlaybackPage> {
   @override
   Widget build(BuildContext context) {
     final form = AppScope.formFactorOf(context);
-    if (defaultTargetPlatform == TargetPlatform.windows) {
+    if (desktopPlatform) {
       final size = MediaQuery.sizeOf(context);
       return switch (form) {
         FormFactor.phone when _wideVideo => LandscapePlayerPage(
