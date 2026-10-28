@@ -189,6 +189,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       if (down) _back();
       return KeyEventResult.handled;
     }
+    if (key == LogicalKeyboardKey.f11) {
+      if (down) unawaited(_toggleFullscreen());
+      return KeyEventResult.handled;
+    }
     if (!_focus.hasPrimaryFocus) return KeyEventResult.ignored;
     switch (key) {
       case LogicalKeyboardKey.enter || LogicalKeyboardKey.numpadEnter:
