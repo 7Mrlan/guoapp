@@ -23,7 +23,7 @@ class PlaybackPage extends StatefulWidget {
   State<PlaybackPage> createState() => _PlaybackPageState();
 }
 
-class _PlaybackPageState extends State<PlaybackPage> {
+class _PlaybackPageState extends State<PlaybackPage> with WindowListener {
   final _padFullscreen = ValueNotifier(false);
   late bool _wideVideo = _measure();
 
@@ -36,10 +36,12 @@ class _PlaybackPageState extends State<PlaybackPage> {
     super.initState();
     _session.addListener(_changed);
     _padFullscreen.addListener(_padFullscreenChanged);
+    if (desktopPlatform) windowManager.addListener(this);
   }
 
   @override
   void dispose() {
+    if (desktopPlatform) windowManager.removeListener(this);
     _session.removeListener(_changed);
     if (_padFullscreen.value) _applyPadFullscreen(false);
     _padFullscreen.dispose();
@@ -52,6 +54,9 @@ class _PlaybackPageState extends State<PlaybackPage> {
     final wide = _measure();
     if (wide != _wideVideo) setState(() => _wideVideo = wide);
   }
+
+  @override
+  void onWindowLeaveFullScreen() => _padFullscreen.value = false;
 
   void _padFullscreenChanged() {
     _applyPadFullscreen(_padFullscreen.value);

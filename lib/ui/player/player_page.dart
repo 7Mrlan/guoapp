@@ -33,7 +33,8 @@ class PlayerPage extends StatefulWidget {
   State<PlayerPage> createState() => _PlayerPageState();
 }
 
-class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
+class _PlayerPageState extends State<PlayerPage>
+    with WidgetsBindingObserver, WindowListener {
   final _focus = FocusNode(debugLabel: 'player');
   final _surfaceKey = GlobalKey();
   final _hint = ValueNotifier('');
@@ -54,11 +55,13 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (desktopPlatform) windowManager.addListener(this);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (desktopPlatform) windowManager.removeListener(this);
     _hintTimer?.cancel();
     _hint.dispose();
     _focus.dispose();
@@ -72,6 +75,17 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       state == AppLifecycleState.resumed ||
           desktopPlatform && state == AppLifecycleState.inactive,
     );
+  }
+
+  @override
+  void onWindowEnterFullScreen() => _syncWindowFullscreen(true);
+
+  @override
+  void onWindowLeaveFullScreen() => _syncWindowFullscreen(false);
+
+  void _syncWindowFullscreen(bool value) {
+    if (_touch || _windowFullscreen == value) return;
+    setState(() => _windowFullscreen = value);
   }
 
   bool get _canDownload =>

@@ -10,6 +10,7 @@ class MainFlutterWindow: NSWindow {
     let windowFrame = self.frame
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
+    self.center()
     let info = Bundle.main.localizedInfoDictionary ?? Bundle.main.infoDictionary
     if let name = info?["CFBundleDisplayName"] as? String {
       self.title = name
