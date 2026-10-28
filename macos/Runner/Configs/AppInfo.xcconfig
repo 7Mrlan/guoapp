@@ -1,0 +1,20 @@
+// Application-level settings for the Runner target.
+//
+// This may be replaced with something auto-generated from metadata (e.g., pubspec.yaml) in the
+// future. If not, the values below would default to using the project name when this becomes a
+// 'flutter create' template.
+
+// The application's name. By default this is also the title of the Flutter window.
+// 打包脚本会按变体把 .app 与 Info.plist 的显示名改成红果鉴 / 真果鉴，这里保持 ASCII。
+PRODUCT_NAME = duanju_app
+
+// The application's bundle identifier
+// 打包脚本会按变体改写为 com.duanju.hongguojian / com.duanju.zhenguojian。
+PRODUCT_BUNDLE_IDENTIFIER = com.duanju.duanjuApp
+
+// The copyright displayed in application information
+PRODUCT_COPYRIGHT = Copyright © 2026 com.duanju. All rights reserved.
+
+// 只出 Apple Silicon（arm64）：不打 universal，包体减半，也不依赖 Intel 切片。
+ARCHS = arm64
+EXCLUDED_ARCHS[sdk=macosx*] = x86_64

@@ -1,0 +1,11 @@
+# Flutter-related
+**/Flutter/ephemeral/
+**/Pods/
+
+# Xcode-related
+**/dgph
+**/xcuserdata/
+
+# Go 核心静态库，由 scripts/build_native.py 生成
+DuanjuCore/libDuanjuCore.a
+DuanjuCore/libDuanjuCore.h

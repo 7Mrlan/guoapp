@@ -23,6 +23,19 @@ Future<void> main() async {
   if (Platform.isWindows) {
     await windowManager.ensureInitialized();
   }
+  if (Platform.isMacOS) {
+    await windowManager.ensureInitialized();
+    try {
+      await windowManager.waitUntilReadyToShow(
+        const WindowOptions(
+          size: Size(1280, 800),
+          minimumSize: Size(960, 640),
+          center: true,
+        ),
+        () async => windowManager.show(),
+      );
+    } catch (_) {}
+  }
   MediaKit.ensureInitialized();
   final device = await AppDevice.detect();
   final rendering = Platform.isAndroid

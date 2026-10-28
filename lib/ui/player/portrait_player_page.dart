@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -83,8 +82,7 @@ class _PortraitPlayerPageState extends State<PortraitPlayerPage>
   void didChangeAppLifecycleState(AppLifecycleState state) =>
       _session.setForeground(
         state == AppLifecycleState.resumed ||
-            defaultTargetPlatform == TargetPlatform.windows &&
-                state == AppLifecycleState.inactive,
+            desktopPlatform && state == AppLifecycleState.inactive,
       );
 
   void _bind() {

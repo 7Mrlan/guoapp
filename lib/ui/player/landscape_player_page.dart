@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -117,7 +116,7 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
     _seekTimer?.cancel();
     if (_holding) _session.endBoost();
     if (widget.onFullscreen == null) {
-      if (_full == true && defaultTargetPlatform == TargetPlatform.windows) {
+      if (_full == true && desktopPlatform) {
         unawaited(windowManager.setFullScreen(false).catchError((Object _) {}));
       }
       unawaited(AppDevice.releaseOrientation());
@@ -134,8 +133,7 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
   void didChangeAppLifecycleState(AppLifecycleState state) =>
       _session.setForeground(
         state == AppLifecycleState.resumed ||
-            defaultTargetPlatform == TargetPlatform.windows &&
-                state == AppLifecycleState.inactive,
+            desktopPlatform && state == AppLifecycleState.inactive,
       );
 
   void _bind() {
@@ -297,7 +295,7 @@ class _LandscapePlayerPageState extends State<LandscapePlayerPage>
   }
 
   void _rotate(bool full) => unawaited(
-    defaultTargetPlatform == TargetPlatform.windows
+    desktopPlatform
         ? windowManager.setFullScreen(!full).catchError((Object _) {})
         : AppDevice.setPlayerOrientation(
             full ? PlayerOrientation.portrait : PlayerOrientation.landscape,
