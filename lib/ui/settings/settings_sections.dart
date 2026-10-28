@@ -12,6 +12,7 @@ import '../../playback_preferences.dart';
 import '../../resource_settings.dart';
 import '../../resource_settings_editor.dart';
 import '../app_scope.dart';
+import '../update_prompt.dart';
 import '../users/users_view.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/group_card.dart';
@@ -346,6 +347,7 @@ class SettingsSection extends StatelessWidget {
             title: appName,
             value: version.isEmpty ? '版本未知' : '版本 $version',
           ),
+          const _UpdateCheckTile(),
           SwitchTile(
             title: '启动时检查更新',
             subtitle: '有新版本时每次启动都会提示，可在提示里忽略此版本',
@@ -402,6 +404,34 @@ class SettingsSection extends StatelessWidget {
     ),
     _BackupCard(store: store),
   ];
+}
+
+class _UpdateCheckTile extends StatefulWidget {
+  const _UpdateCheckTile();
+
+  @override
+  State<_UpdateCheckTile> createState() => _UpdateCheckTileState();
+}
+
+class _UpdateCheckTileState extends State<_UpdateCheckTile> {
+  var _busy = false;
+
+  Future<void> _check() async {
+    setState(() => _busy = true);
+    try {
+      await checkUpdateManually(context);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SettingsTile(
+    title: '检查更新',
+    value: _busy ? '检查中' : null,
+    enabled: !_busy,
+    onTap: _check,
+  );
 }
 
 class _BackupCard extends StatefulWidget {
