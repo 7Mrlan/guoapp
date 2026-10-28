@@ -4,6 +4,7 @@ import plistlib
 import re
 import shutil
 import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
@@ -27,8 +28,8 @@ output.mkdir(parents=True, exist_ok=True)
 artifacts = []
 
 
-def run(arguments):
-    subprocess.run([str(item) for item in arguments], check=True)
+def run(arguments, cwd=None):
+    subprocess.run([str(item) for item in arguments], cwd=cwd, check=True)
 
 
 def macho_architectures(path):
@@ -70,6 +71,72 @@ def sign_macos_application(application, identity):
     run(flags + [application])
 
 
+def draw_dmg_background(path, display):
+    """生成 dmg 窗口背景：品牌底色 + 从左到右的箭头 + 安装提示。没有 Pillow 时跳过。"""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError:
+        return None
+    width, height = 620, 380
+    image = Image.new('RGB', (width, height), '#F5F9FC')
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, width, 96), fill='#E8F1FA')
+    arrow = '#B9CBDD'
+    draw.line((300, 178, 400, 178), fill=arrow, width=6)
+    draw.line((384, 166, 402, 178), fill=arrow, width=6)
+    draw.line((384, 190, 402, 178), fill=arrow, width=6)
+    font_path = None
+    for candidate in ('/System/Library/Fonts/PingFang.ttc',
+                      '/System/Library/Fonts/Hiragino Sans GB.ttc',
+                      '/System/Library/Fonts/STHeiti Medium.ttc'):
+        if Path(candidate).exists():
+            font_path = candidate
+            break
+    title = ImageFont.truetype(font_path, 26) if font_path else ImageFont.load_default()
+    hint = ImageFont.truetype(font_path, 15) if font_path else ImageFont.load_default()
+    draw.text((width / 2, 48), display, font=title, fill='#3B4552', anchor='mm')
+    draw.text((width / 2, 292), f'把「{display}」拖到右侧 Applications 完成安装',
+              font=hint, fill='#7A8796', anchor='mm')
+    image.save(path)
+    return path
+
+
+def build_macos_dmg(display, staging, staged, target):
+    """优先用 dmgbuild 生成带 .DS_Store 的安装窗口；没装 dmgbuild 时退回普通镜像。"""
+    background = draw_dmg_background(staging.parent / 'dmg-background.png', display)
+    installed = subprocess.run([sys.executable, '-c', 'import dmgbuild'],
+                               capture_output=True).returncode == 0
+    if installed:
+        settings = staging.parent / 'dmg-settings.py'
+        layout = [
+            f'volume_name = {display!r}',
+            "format = 'UDZO'",
+            f'files = [{staged.name!r}]',
+            "symlinks = {'Applications': '/Applications'}",
+            "default_view = 'icon-view'",
+            'icon_size = 128',
+            'text_size = 13',
+            'window_rect = ((240, 140), (620, 380))',
+            f'icon_locations = {{{staged.name!r}: (155, 175), "Applications": (465, 175)}}',
+            'show_status_bar = False',
+            'show_tab_view = False',
+            'show_toolbar = False',
+            'show_pathbar = False',
+            'show_sidebar = False',
+            'arrange_by = None',
+        ]
+        if background is not None:
+            layout.append(f'background = {str(background)!r}')
+        settings.write_text('\n'.join(layout) + '\n')
+        run([sys.executable, '-m', 'dmgbuild', '-s', settings, display, target], cwd=staging)
+    else:
+        print('未安装 dmgbuild，退回普通 dmg（没有拖拽安装的窗口布局）；'
+              '需要时执行 pip install dmgbuild。', flush=True)
+        os.symlink('/Applications', staging / 'Applications')
+        run(['hdiutil', 'create', '-volname', display, '-srcfolder', staging, '-ov',
+             '-fs', 'HFS+', '-format', 'UDZO', '-imagekey', 'zlib-level=9', target])
+
+
 def package_macos(application):
     display = '真果鉴' if variant.all_sources else '红果鉴'
     staging = root / 'build' / 'macos-dmg'
@@ -86,12 +153,10 @@ def package_macos(application):
     plist_path.write_bytes(plistlib.dumps(info))
     sign_macos_application(staged, options.identity)
     verify_macos_application(staged)
-    os.symlink('/Applications', staging / 'Applications')
     target = output / f'{variant.slug}-{version}-macos-arm64.dmg'
     if target.exists():
         target.unlink()
-    run(['hdiutil', 'create', '-volname', display, '-srcfolder', staging, '-ov',
-         '-fs', 'HFS+', '-format', 'UDZO', '-imagekey', 'zlib-level=9', target])
+    build_macos_dmg(display, staging, staged, target)
     mount = root / 'build' / 'macos-dmg-mount'
     if mount.exists():
         shutil.rmtree(mount)
@@ -102,6 +167,8 @@ def package_macos(application):
             raise SystemExit('dmg 里缺少应用：' + display)
         if not (mount / 'Applications').is_symlink():
             raise SystemExit('dmg 里缺少 Applications 快捷方式。')
+        if not (mount / '.DS_Store').is_file():
+            print('警告：dmg 里没有 .DS_Store，双击后不会按预期摆放图标。', flush=True)
     finally:
         subprocess.run(['hdiutil', 'detach', str(mount)], capture_output=True)
     return target
