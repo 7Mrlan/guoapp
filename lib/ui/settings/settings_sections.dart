@@ -150,6 +150,15 @@ class SettingsSection extends StatelessWidget {
             ),
           ),
           if (Platform.isAndroid) const _RenderingTile(),
+          SwitchTile(
+            title: '预开下一集',
+            subtitle: '提前打开下一集的播放器，切集无需等待',
+            value: preferences.preopens(
+              television: AppScope.of(context).television,
+            ),
+            onChanged: (value) =>
+                savePreferences(preferences.copyWith(preopen: value)),
+          ),
         ],
       ),
     ];

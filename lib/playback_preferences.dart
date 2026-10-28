@@ -13,6 +13,7 @@ class PlaybackPreferences {
     this.preload = true,
     this.enhancement = const VideoEnhancementPreferences(),
     this.televisionDecoder = TelevisionDecoder.optimized,
+    this.preopen,
   });
 
   final double speed;
@@ -22,6 +23,9 @@ class PlaybackPreferences {
   final bool preload;
   final VideoEnhancementPreferences enhancement;
   final TelevisionDecoder televisionDecoder;
+  final bool? preopen;
+
+  bool preopens({required bool television}) => preopen ?? !television;
 
   PlaybackPreferences copyWith({
     double? speed,
@@ -31,6 +35,7 @@ class PlaybackPreferences {
     bool? preload,
     VideoEnhancementPreferences? enhancement,
     TelevisionDecoder? televisionDecoder,
+    bool? preopen,
   }) => PlaybackPreferences(
     speed: speed ?? this.speed,
     quality: quality ?? this.quality,
@@ -39,6 +44,7 @@ class PlaybackPreferences {
     preload: preload ?? this.preload,
     enhancement: enhancement ?? this.enhancement,
     televisionDecoder: televisionDecoder ?? this.televisionDecoder,
+    preopen: preopen ?? this.preopen,
   );
 
   Map<String, dynamic> toJson() => {
@@ -49,6 +55,7 @@ class PlaybackPreferences {
     'preload': preload,
     'enhancement': enhancement.toJson(),
     'televisionDecoder': televisionDecoder.name,
+    if (preopen != null) 'preopen': preopen,
   };
 
   factory PlaybackPreferences.fromJson(Map<String, dynamic> value) {
@@ -70,6 +77,7 @@ class PlaybackPreferences {
       televisionDecoder:
           TelevisionDecoder.values.asNameMap()[value['televisionDecoder']] ??
           TelevisionDecoder.optimized,
+      preopen: value['preopen'] as bool?,
     );
   }
 }
